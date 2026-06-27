@@ -1,0 +1,16 @@
+{
+  "name": "toolshed",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A growing collection of small, self-hosted, no-account tools served as one static site (Email Extractor, Par Avion, loom-grab, …).",
+  "scripts": {
+    "test": "node --test",
+    "build": "node scripts/build.mjs",
+    "serve": "node scripts/serve.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

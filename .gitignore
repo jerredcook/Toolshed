@@ -1,0 +1,20 @@
+# dependencies (none today, but just in case)
+node_modules/
+
+# Par Avion outputs — generated chunks, drafts, manifests
+*.eml
+*.part[0-9]*of[0-9]*
+*.manifest.json
+
+# loom-grab outputs — downloaded media
+*.mp4
+*.webm
+*.mkv
+*.m4a
+*.vtt
+*.part
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log

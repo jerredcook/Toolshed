@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>loom-grab — Toolshed</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #777;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    padding: 40px 24px 80px;
+    line-height: 1.65;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 80% 0%, rgba(232,255,71,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .wrap { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; }
+
+  .back {
+    display: inline-block;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 12px;
+    letter-spacing: 1px;
+    margin-bottom: 36px;
+    transition: color .15s;
+  }
+  .back:hover { color: var(--accent2); }
+
+  .eyebrow {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 13px;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(40px, 8vw, 64px);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .lede { color: var(--muted); font-size: 15px; max-width: 60ch; margin-top: 18px; }
+
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    margin: 48px 0 14px;
+  }
+  p { color: #cfcfcf; font-size: 14px; margin-bottom: 12px; }
+  p.note { color: var(--muted); font-size: 13px; }
+  a.inline { color: var(--accent2); }
+
+  ol, ul { margin: 0 0 12px 22px; color: #cfcfcf; font-size: 14px; }
+  li { margin-bottom: 8px; }
+  li strong { color: var(--text); }
+
+  code.inline {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  .cmd {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 56px 18px 18px;
+    margin: 14px 0;
+    overflow-x: auto;
+  }
+  .cmd pre {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: #e6e6e6;
+    white-space: pre;
+  }
+  .cmd .prompt { color: var(--accent2); user-select: none; }
+  .copy {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .copy:hover { color: var(--accent); border-color: var(--accent); }
+
+  .callout {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 24px 0;
+    font-size: 13px;
+    color: #cfcfcf;
+  }
+
+  footer { margin-top: 56px; color: var(--muted); font-size: 11px; text-align: center; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 11px 20px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="back" href="../../index.html">← Toolshed</a>
+
+  <div class="eyebrow">CLI tool</div>
+  <h1>loom-grab</h1>
+  <p class="lede">Save a Loom video you’re authorized to view as a clean, universally-playable MP4 — without creating a Loom account. A thin wrapper around <a class="inline" href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a>.</p>
+
+  <div class="callout">
+    <strong>Authorized access only.</strong> This is for videos you legitimately can view — one shared with you (with its password), or your own content. It works by <em>using</em> that access: your password, or your already-authenticated browser session. It is not for guessing passwords or stripping DRM.
+  </div>
+
+  <h2>1 · Install dependencies</h2>
+  <p>You need <code class="inline">yt-dlp</code> and <code class="inline">ffmpeg</code> on your PATH. <code class="inline">ffmpeg</code> matters because Loom sometimes serves audio and video as separate streams — without it, the download can come out silent.</p>
+  <div class="cmd">
+    <button class="copy" data-copy="brew install yt-dlp ffmpeg">copy</button>
+    <pre><span class="prompt">macOS  $ </span>brew install yt-dlp ffmpeg</pre>
+  </div>
+  <div class="cmd">
+    <button class="copy" data-copy="pipx install yt-dlp && sudo apt install ffmpeg">copy</button>
+    <pre><span class="prompt">Linux  $ </span>pipx install yt-dlp && sudo apt install ffmpeg</pre>
+  </div>
+  <p class="note">Windows: run the <code class="inline">yt-dlp</code> commands directly, or use WSL / Git Bash.</p>
+
+  <h2>2 · Run it</h2>
+  <p>From <code class="inline">tools/loom-grab/</code>:</p>
+  <div class="cmd">
+    <button class="copy" data-copy='./loom-grab.sh "https://www.loom.com/share/<id>" "the-password"'>copy</button>
+    <pre><span class="prompt">$ </span>./loom-grab.sh "https://www.loom.com/share/&lt;id&gt;" "the-password"</pre>
+  </div>
+  <p class="note">Leave the password off to be prompted for it privately; run with no arguments to be prompted for both. The script prefers Loom’s transcoded MP4, remuxes to <code class="inline">.mp4</code> with <code class="inline">+faststart</code>, and names the file after the video title.</p>
+
+  <h2>What it tries, in order</h2>
+  <ol>
+    <li><strong>Direct, with your password</strong> — <code class="inline">yt-dlp --video-password …</code></li>
+    <li><strong>Your browser session</strong> — if Loom’s gate doesn’t honor the password flag, it reuses your browser cookies (where you’ve already entered the password). Defaults to Chrome; override with <code class="inline">LOOM_BROWSER=firefox ./loom-grab.sh …</code> (also <code class="inline">edge</code>, <code class="inline">brave</code>, …).</li>
+    <li><strong>Manual</strong> — if both miss, it prints the DevTools route: play the video, grab the <code class="inline">.m3u8</code>/<code class="inline">.mp4</code> URL from the Network tab, and feed it to <code class="inline">yt-dlp</code> directly.</li>
+  </ol>
+  <p>One of the three reliably gets it.</p>
+
+  <h2>Raw one-liner</h2>
+  <p>If you’d rather skip the script:</p>
+  <div class="cmd">
+    <button class="copy" data-copy='yt-dlp --video-password "the-password" -f "http-transcoded/bv*+ba/b" --remux-video mp4 "https://www.loom.com/share/<id>"'>copy</button>
+    <pre><span class="prompt">$ </span>yt-dlp --video-password "the-password" \
+    -f "http-transcoded/bv*+ba/b" --remux-video mp4 \
+    "https://www.loom.com/share/&lt;id&gt;"</pre>
+  </div>
+
+  <footer>Part of Toolshed · the script lives at <code class="inline">tools/loom-grab/loom-grab.sh</code></footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+  document.querySelectorAll('.copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(btn.dataset.copy).then(() => showToast('Copied to clipboard'));
+    });
+  });
+</script>
+</body>
+</html>

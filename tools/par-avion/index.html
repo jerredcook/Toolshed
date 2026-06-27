@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Par Avion — file relay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EBEDF0; --surface:#FFFFFF; --ink:#161A23; --slate:#586072; --faint:#8A92A3;
+    --line:#D6DAE1; --line-soft:#E6E9EE; --air-red:#D2392B; --air-blue:#274A95;
+    --ok:#1B8A52; --warn:#B14E26;
+    --mono:"Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    --sans:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --r:10px; --shadow:0 1px 0 rgba(22,26,35,.04), 0 12px 32px -22px rgba(22,26,35,.45);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;
+    -webkit-font-smoothing:antialiased;padding:28px 18px 64px}
+  .wrap{max-width:860px;margin:0 auto}
+
+  .chevron{height:7px;width:100%;border-radius:2px;background:repeating-linear-gradient(-45deg,
+    var(--air-red) 0 9px,#fff 9px 18px,var(--air-blue) 18px 27px,#fff 27px 36px)}
+
+  header{margin-bottom:22px}
+  .crest{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+  .mark{font-family:var(--mono);font-weight:700;letter-spacing:.18em;font-size:13px;color:var(--air-red)}
+  .mark .by{color:var(--air-blue)}
+  .stamp{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--slate);
+    border:1.5px solid var(--line);border-radius:5px;padding:5px 9px;text-transform:uppercase;transform:rotate(-2deg)}
+  h1{font-family:var(--mono);font-weight:700;font-size:clamp(30px,6vw,46px);letter-spacing:-.01em;
+    margin:14px 0 6px;line-height:1.02}
+  .lede{color:var(--slate);font-size:15.5px;max-width:54ch;margin:0}
+
+  .modes{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r);padding:6px;margin:26px 0 18px;box-shadow:var(--shadow)}
+  .modes button{flex:1;appearance:none;border:0;background:transparent;cursor:pointer;
+    font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;color:var(--slate);
+    padding:11px 10px;border-radius:7px;transition:background .18s,color .18s;text-transform:uppercase}
+  .modes button .n{color:var(--faint);margin-right:8px}
+  .modes button[aria-selected="true"]{background:var(--ink);color:#fff}
+  .modes button[aria-selected="true"] .n{color:#fff;opacity:.55}
+  .modes button:focus-visible{outline:2px solid var(--air-blue);outline-offset:2px}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+  .panel-body{padding:22px}
+  .panel[hidden]{display:none}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase;margin:0 0 12px}
+
+  .drop{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;
+    padding:34px 20px;border:1.5px dashed var(--line);border-radius:9px;background:#FAFBFC;cursor:pointer;
+    transition:border-color .18s,background .18s}
+  .drop:hover,.drop.hot{border-color:var(--air-blue);background:#F4F7FC}
+  .drop input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  .drop .big{font-family:var(--mono);font-size:14px}
+  .drop .sub{color:var(--slate);font-size:13px}
+  .drop .ico{width:34px;height:24px}
+  .drop:focus-within{outline:2px solid var(--air-blue);outline-offset:3px;border-radius:9px}
+
+  .readout{margin-top:18px;border-top:1px solid var(--line-soft);padding-top:18px;display:none}
+  .readout.show{display:block}
+  .fname{font-family:var(--mono);font-weight:700;font-size:14px;word-break:break-all;display:flex;align-items:center;gap:9px}
+  .fname .clear{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--air-red);background:none;
+    border:0;cursor:pointer;letter-spacing:.05em;flex:none}
+  .fname .clear:hover{text-decoration:underline}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line-soft);
+    border:1px solid var(--line-soft);border-radius:8px;overflow:hidden;margin-top:14px}
+  .cell{background:var(--surface);padding:12px 14px}
+  .cell .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase}
+  .cell .v{font-family:var(--mono);font-size:17px;font-weight:700;margin-top:3px}
+  .cell .v small{font-weight:400;font-size:12px;color:var(--slate)}
+
+  .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:18px}
+  .field label{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--slate);
+    text-transform:uppercase;display:block;margin-bottom:6px}
+  .field input{width:100%;font-family:var(--mono);font-size:14px;color:var(--ink);background:#FBFCFD;
+    border:1px solid var(--line);border-radius:7px;padding:10px 12px}
+  .field input:focus{outline:2px solid var(--air-blue);outline-offset:1px;border-color:var(--air-blue)}
+  .field .hint{font-size:11px;color:var(--faint);margin-top:5px}
+
+  .row-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;align-items:center}
+  .btn{appearance:none;border:0;cursor:pointer;font-family:var(--mono);font-size:13px;letter-spacing:.04em;
+    padding:12px 18px;border-radius:8px;transition:transform .08s,filter .18s,background .18s}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--air-red);color:#fff}
+  .btn-primary:hover{filter:brightness(1.06)}
+  .btn-primary:disabled{background:var(--line);color:var(--faint);cursor:not-allowed;filter:none}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .btn-ghost:hover{border-color:var(--ink)}
+  .btn:focus-visible{outline:2px solid var(--air-blue);outline-offset:2px}
+  .working{font-family:var(--mono);font-size:12px;color:var(--slate)}
+
+  .packets{margin-top:22px;display:none}
+  .packets.show{display:block}
+  .packets h3{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase;margin:0 0 12px}
+  .strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:12px}
+  .packet{position:relative;border:1px solid var(--line);border-radius:8px;background:var(--surface);
+    padding:13px 14px 13px 18px;overflow:hidden;animation:pop .32s ease both}
+  .packet::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;
+    background:repeating-linear-gradient(-45deg,var(--air-red) 0 7px,#fff 7px 14px,var(--air-blue) 14px 21px,#fff 21px 28px)}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .packet .pnum{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.04em}
+  .packet .psize{font-family:var(--mono);font-size:11px;color:var(--slate);margin-top:2px}
+  .packet .phash{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:8px;word-break:break-all}
+  .packet .dl{display:inline-block;margin-top:11px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+    color:var(--air-blue);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:6px 9px}
+  .packet .dl:hover{border-color:var(--air-blue);background:#F4F7FC}
+
+  .note{margin-top:20px;border:1px solid var(--line);border-left:3px solid var(--air-blue);border-radius:8px;
+    background:#F6F8FC;padding:14px 16px;font-size:13.5px;color:var(--slate)}
+  .note b{color:var(--ink);font-weight:600}
+  .note code{font-family:var(--mono);font-size:12px;background:#fff;border:1px solid var(--line);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  .bar{height:12px;border-radius:6px;background:var(--line-soft);overflow:hidden;margin-top:6px;border:1px solid var(--line)}
+  .bar > i{display:block;height:100%;width:0;transition:width .3s;
+    background:repeating-linear-gradient(-45deg,var(--air-red) 0 10px,var(--air-blue) 10px 20px)}
+  .status{margin-top:16px;font-family:var(--mono);font-size:12.5px;display:grid;gap:6px}
+  .status .line{display:flex;gap:9px;align-items:flex-start;color:var(--slate)}
+  .status .ok{color:var(--ok)}
+  .status .bad{color:var(--air-red)}
+  .status .dot{flex:none;width:16px;text-align:center}
+
+  footer{margin-top:28px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em;line-height:1.7}
+  footer .chevron{height:5px;max-width:200px;margin:0 auto 14px}
+
+  @media (max-width:540px){ .panel-body{padding:18px} .stamp{display:none} }
+  @media (prefers-reduced-motion:reduce){ *{animation:none !important;transition:none !important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a href="../../index.html" style="display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--slate);text-decoration:none;margin-bottom:18px">← Toolshed</a>
+
+  <header>
+    <div class="crest">
+      <span class="mark">PAR AVION <span class="by">// FILE RELAY</span></span>
+      <span class="stamp">runs in your browser</span>
+    </div>
+    <div class="chevron"></div>
+    <h1>Mail a file that's<br>too big to mail.</h1>
+    <p class="lede">Slice a large file into parts that each fit under your provider's attachment limit, turn each part into a ready-to-send email draft, then snap the pieces back together on the other end.</p>
+  </header>
+
+  <nav class="modes" role="tablist" aria-label="Mode">
+    <button id="tab-send" role="tab" aria-selected="true" aria-controls="panel-send"><span class="n">01</span>Split &amp; draft</button>
+    <button id="tab-recv" role="tab" aria-selected="false" aria-controls="panel-recv"><span class="n">02</span>Reassemble</button>
+  </nav>
+
+  <!-- ===================== SENDER ===================== -->
+  <section class="panel" id="panel-send" role="tabpanel" aria-labelledby="tab-send">
+    <div class="panel-body">
+      <p class="eyebrow">Sender · cut a file into emailable parts</p>
+
+      <label class="drop" id="drop-send" tabindex="0">
+        <input type="file" id="file-send">
+        <svg class="ico" viewBox="0 0 48 32" fill="none" stroke="var(--air-blue)" stroke-width="1.6"><rect x="3" y="4" width="42" height="24" rx="3"/><path d="M3 7l21 13L45 7"/></svg>
+        <span class="big">Drop a file or browse</span>
+        <span class="sub">Any type — documents, video, archives. Nothing leaves your device.</span>
+      </label>
+
+      <div class="readout" id="readout-send">
+        <div class="fname"><span id="rs-name">file</span><button class="clear" id="rs-clear" type="button">remove</button></div>
+        <div class="grid">
+          <div class="cell"><div class="k">File size</div><div class="v" id="rs-size">—</div></div>
+          <div class="cell"><div class="k">Part size</div><div class="v" id="rs-chunk">—</div></div>
+          <div class="cell"><div class="k">Parts</div><div class="v" id="rs-parts">—</div></div>
+          <div class="cell"><div class="k">Largest email</div><div class="v" id="rs-largest">—</div></div>
+        </div>
+        <div class="controls">
+          <div class="field"><label for="opt-limit">Max email size (MB)</label>
+            <input id="opt-limit" type="number" min="1" max="45" step="1" value="10" inputmode="decimal">
+            <div class="hint">The whole email, after encoding. 10 is a safe default.</div></div>
+          <div class="field"><label for="opt-to">Send to (optional)</label>
+            <input id="opt-to" type="text" placeholder="name@example.com" autocomplete="off">
+            <div class="hint">Pre-fills the To: line in every draft.</div></div>
+          <div class="field"><label for="opt-tag">Subject tag</label>
+            <input id="opt-tag" type="text" placeholder="Part" value="Part" autocomplete="off">
+            <div class="hint">Shown as "Tag [2/7] filename".</div></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="btn-generate">Cut into parts &amp; make drafts</button>
+          <span class="working" id="send-working" aria-live="polite"></span>
+        </div>
+      </div>
+
+      <div class="packets" id="packets">
+        <h3>Drafts — open each and hit send</h3>
+        <div class="strip" id="strip"></div>
+        <div class="row-actions">
+          <button class="btn btn-ghost" id="btn-dl-all">Download all drafts</button>
+          <button class="btn btn-ghost" id="btn-dl-manifest">Download manifest.json</button>
+        </div>
+        <div class="note"><b>How to send:</b> double-click a <code>.eml</code> to open it in Apple Mail, Outlook, or Thunderbird, then send. Order doesn't matter — the reassembler sorts the parts itself. <b>On Gmail web?</b> the saved attachments are plain part files; attach them to separate emails manually, or send the <code>.eml</code> files from a desktop client. Keep <code>manifest.json</code> for integrity checks.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== RECEIVER ===================== -->
+  <section class="panel" id="panel-recv" role="tabpanel" aria-labelledby="tab-recv" hidden>
+    <div class="panel-body">
+      <p class="eyebrow">Receiver · put the file back together</p>
+
+      <label class="drop" id="drop-recv" tabindex="0">
+        <input type="file" id="file-recv" multiple>
+        <svg class="ico" viewBox="0 0 48 32" fill="none" stroke="var(--air-red)" stroke-width="1.6"><path d="M8 26V8a3 3 0 0 1 3-3h26a3 3 0 0 1 3 3v18"/><path d="M3 26h42"/><path d="M19 14l5 5 5-5"/></svg>
+        <span class="big">Drop the received parts</span>
+        <span class="sub">The saved part attachments — or the <code style="font-family:var(--mono)">.eml</code> files. Add <code style="font-family:var(--mono)">manifest.json</code> to verify.</span>
+      </label>
+
+      <div class="readout" id="readout-recv">
+        <div class="fname"><span id="rr-name">reassembled file</span><button class="clear" id="rr-clear" type="button">clear</button></div>
+        <div class="bar"><i id="rr-bar"></i></div>
+        <div class="status" id="rr-status"></div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="btn-reassemble" disabled>Reassemble &amp; download</button>
+          <span class="working" id="recv-working" aria-live="polite"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="chevron"></div>
+    Everything runs locally in this page — no servers, no uploads.<br>
+    Tip: serve it over localhost (<code style="font-family:var(--mono)">npm run serve</code>) so the integrity hashing always has a secure context.
+  </footer>
+</div>
+
+<script>
+/* Par Avion — core + app.
+   The block between the CHUNK-CORE markers is GENERATED from
+   tools/par-avion/lib/chunk-core.mjs. Do not edit it here: change the .mjs source,
+   then run `npm run build` to sync, and `npm test` to verify. */
+// ==CHUNK-CORE:START==
+      // generated from tools/par-avion/lib/chunk-core.mjs — do not edit here; run `npm run build`
+      function rawChunkSizeForEmailLimit(emailLimitBytes) {
+        const HEADER_OVERHEAD = 8 * 1024; // headers, body text, MIME boundaries
+        const B64 = 4 / 3;                // base64 expansion
+        const NEWLINE = 1 + 2 / 76;       // CRLF every 76 encoded chars
+        const SAFETY = 0.92;              // headroom for provider quirks
+        const usable = (emailLimitBytes - HEADER_OVERHEAD) * SAFETY;
+        return Math.max(1, Math.floor(usable / (B64 * NEWLINE)));
+      }
+
+      // Uint8Array -> base64 string. Chunked so we never blow the call stack.
+      function bytesToBase64(bytes) {
+        let bin = '';
+        const block = 0x8000;
+        for (let i = 0; i < bytes.length; i += block) {
+          bin += String.fromCharCode.apply(null, bytes.subarray(i, i + block));
+        }
+        return btoa(bin);
+      }
+
+      // base64 string -> Uint8Array.
+      function base64ToBytes(b64) {
+        const bin = atob(b64);
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        return arr;
+      }
+
+      // Wrap a base64 string at 76 chars per line (RFC 2045), CRLF-joined.
+      function wrap76(b64) {
+        const lines = [];
+        for (let i = 0; i < b64.length; i += 76) lines.push(b64.slice(i, i + 76));
+        return lines.join('\r\n');
+      }
+
+      // Build one single-part .eml draft. `boundary` is injected by the caller so this
+      // stays deterministic and environment-agnostic (the app passes a random one).
+      function buildEml({ to, tag, origName, index, total, partName, b64wrapped, boundary }) {
+        const subject = `${tag} [${index}/${total}] ${origName}`;
+        const body =
+      `Part ${index} of ${total} of "${origName}".
+      Save this attachment, gather all ${total} parts, then reassemble them with Par Avion.`;
+        return [
+          to ? `To: ${to}` : `To: `,
+          `Subject: ${subject}`,
+          `X-ChunkMail-Original: ${origName}`,
+          `X-ChunkMail-Part: ${index}/${total}`,
+          `MIME-Version: 1.0`,
+          `Content-Type: multipart/mixed; boundary="${boundary}"`,
+          ``,
+          `--${boundary}`,
+          `Content-Type: text/plain; charset="utf-8"`,
+          `Content-Transfer-Encoding: 7bit`,
+          ``,
+          body,
+          ``,
+          `--${boundary}`,
+          `Content-Type: application/octet-stream; name="${partName}"`,
+          `Content-Transfer-Encoding: base64`,
+          `Content-Disposition: attachment; filename="${partName}"`,
+          ``,
+          b64wrapped,
+          `--${boundary}--`,
+          ``
+        ].join('\r\n');
+      }
+
+      // Parse a part filename "name.ext.partNNNofMMM" -> { base, index, total } | null.
+      function parsePartName(name) {
+        const m = name.match(/^(.*)\.part(\d+)of(\d+)$/i);
+        return m ? { base: m[1], index: +m[2], total: +m[3] } : null;
+      }
+
+      // Pull metadata + the attachment's base64 payload out of a .eml string.
+      // Returns { base, index, total, base64 } — base/index/total may be null if the
+      // X-ChunkMail headers are absent (caller can fall back to the filename).
+      function parseEml(text) {
+        const origM = text.match(/^X-ChunkMail-Original:\s*(.+)$/im);
+        const partM = text.match(/^X-ChunkMail-Part:\s*(\d+)\/(\d+)/im);
+        const octIdx = text.search(/Content-Type:\s*application\/octet-stream/i);
+        if (octIdx < 0) return null;
+        let s = text.indexOf('\r\n\r\n', octIdx);
+        let off = 4;
+        if (s < 0) { s = text.indexOf('\n\n', octIdx); off = 2; }
+        if (s < 0) return null;
+        const rest = text.slice(s + off);
+        const endRel = rest.search(/\r?\n--/); // closing MIME boundary
+        const b64 = rest.slice(0, endRel >= 0 ? endRel : undefined).replace(/\s+/g, '');
+        return {
+          base: origM ? origM[1].trim() : null,
+          index: partM ? +partM[1] : null,
+          total: partM ? +partM[2] : null,
+          base64: b64
+        };
+      }
+
+      // Zero-pad a part number to 3 digits.
+      function padPart(n) {
+        return String(n).padStart(3, '0');
+      }
+      // ==CHUNK-CORE:END==
+
+/* ---- app-only helpers (browser APIs) ---- */
+const $ = s => document.querySelector(s);
+function humanSize(b){
+  if(b < 1024) return b + ' B';
+  const u = ['KB','MB','GB','TB']; let i=-1; let n=b;
+  do{ n/=1024; i++; }while(n>=1024 && i<u.length-1);
+  return n.toFixed(n<10?2:1) + ' ' + u[i];
+}
+async function sha256Hex(buf){
+  const d = await crypto.subtle.digest('SHA-256', buf);
+  return [...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function rndHex(n){
+  const a = new Uint8Array(n); crypto.getRandomValues(a);
+  return [...a].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function triggerDownload(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+/* ---- tabs ---- */
+const tabs = { send: $('#tab-send'), recv: $('#tab-recv') };
+const panels = { send: $('#panel-send'), recv: $('#panel-recv') };
+function selectTab(which){
+  for(const k of ['send','recv']){
+    const on = k === which;
+    tabs[k].setAttribute('aria-selected', on ? 'true':'false');
+    panels[k].hidden = !on;
+  }
+}
+tabs.send.onclick = ()=>selectTab('send');
+tabs.recv.onclick = ()=>selectTab('recv');
+
+/* ---- dropzone wiring ---- */
+function wireDrop(zoneSel, inputSel, onFiles){
+  const zone = $(zoneSel), input = $(inputSel);
+  input.addEventListener('change', e => { if(e.target.files.length) onFiles(e.target.files); });
+  ['dragenter','dragover'].forEach(ev => zone.addEventListener(ev, e=>{e.preventDefault();zone.classList.add('hot');}));
+  ['dragleave','drop'].forEach(ev => zone.addEventListener(ev, e=>{e.preventDefault();zone.classList.remove('hot');}));
+  zone.addEventListener('drop', e => { if(e.dataTransfer.files.length) onFiles(e.dataTransfer.files); });
+  zone.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); input.click(); } });
+}
+
+/* ===================== SENDER ===================== */
+const sender = { file:null, drafts:[], manifest:null };
+
+function refreshSenderReadout(){
+  const f = sender.file;
+  $('#readout-send').classList.toggle('show', !!f);
+  if(!f) return;
+  $('#rs-name').textContent = f.name;
+  $('#rs-size').textContent = humanSize(f.size);
+  const limitBytes = (parseFloat($('#opt-limit').value) || 10) * 1024 * 1024;
+  const chunk = rawChunkSizeForEmailLimit(limitBytes);
+  const parts = Math.max(1, Math.ceil(f.size / chunk));
+  const lastEncoded = Math.ceil(Math.min(chunk, f.size) / 3) * 4 * 1.027 + 8192;
+  $('#rs-chunk').textContent = humanSize(chunk);
+  $('#rs-parts').innerHTML = parts + ' <small>email' + (parts>1?'s':'') + '</small>';
+  $('#rs-largest').innerHTML = humanSize(Math.min(lastEncoded, limitBytes)) + ' <small>/ ' + humanSize(limitBytes) + '</small>';
+}
+
+wireDrop('#drop-send', '#file-send', files => { sender.file = files[0]; resetDrafts(); refreshSenderReadout(); });
+$('#opt-limit').addEventListener('input', refreshSenderReadout);
+$('#rs-clear').onclick = () => { sender.file = null; $('#file-send').value=''; resetDrafts(); refreshSenderReadout(); };
+
+function resetDrafts(){
+  sender.drafts.forEach(d => URL.revokeObjectURL(d.url));
+  sender.drafts = []; sender.manifest = null;
+  $('#strip').innerHTML = '';
+  $('#packets').classList.remove('show');
+  $('#send-working').textContent = '';
+}
+
+$('#btn-generate').onclick = async () => {
+  const f = sender.file; if(!f) return;
+  resetDrafts();
+  const btn = $('#btn-generate'); btn.disabled = true;
+  const limitBytes = (parseFloat($('#opt-limit').value) || 10) * 1024 * 1024;
+  const chunk = rawChunkSizeForEmailLimit(limitBytes);
+  const total = Math.max(1, Math.ceil(f.size / chunk));
+  const to = $('#opt-to').value.trim();
+  const tag = $('#opt-tag').value.trim() || 'Part';
+  const origName = f.name;
+
+  sender.manifest = { app:'par-avion', version:1, originalName:origName, totalSize:f.size,
+    partCount:total, maxEmailBytes:limitBytes, rawChunkBytes:chunk, parts:[] };
+
+  const strip = $('#strip');
+  $('#packets').classList.add('show');
+
+  for(let i=0;i<total;i++){
+    $('#send-working').textContent = `building part ${i+1} of ${total}…`;
+    const start = i*chunk, end = Math.min(start+chunk, f.size);
+    const buf = await f.slice(start, end).arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    const hash = await sha256Hex(buf);
+    const b64 = wrap76(bytesToBase64(bytes));
+    const partName = `${origName}.part${padPart(i+1)}of${padPart(total)}`;
+    const eml = buildEml({to, tag, origName, index:i+1, total, partName, b64wrapped:b64, boundary:'----=_CM_'+rndHex(12)});
+    const blob = new Blob([eml], {type:'message/rfc822'});
+    const url = URL.createObjectURL(blob);
+    const emlName = `${partName}.eml`;
+    sender.manifest.parts.push({ index:i+1, name:partName, size:end-start, sha256:hash });
+    sender.drafts.push({ index:i+1, total, emlName, size:end-start, sha256:hash, url, blob });
+
+    const card = document.createElement('div');
+    card.className = 'packet';
+    card.style.animationDelay = (Math.min(i,12)*0.03)+'s';
+    card.innerHTML =
+      `<div class="pnum">PART ${padPart(i+1)} / ${padPart(total)}</div>`+
+      `<div class="psize">${humanSize(end-start)}</div>`+
+      `<div class="phash">sha256 ${hash.slice(0,16)}…</div>`+
+      `<a class="dl" href="${url}" download="${emlName}">Download draft</a>`;
+    strip.appendChild(card);
+    await new Promise(r=>setTimeout(r,0));
+  }
+  $('#send-working').textContent = `${total} draft${total>1?'s':''} ready.`;
+  btn.disabled = false;
+};
+
+$('#btn-dl-all').onclick = async () => {
+  for(const d of sender.drafts){
+    triggerDownload(d.blob, d.emlName);
+    await new Promise(r=>setTimeout(r,350));
+  }
+};
+$('#btn-dl-manifest').onclick = () => {
+  if(!sender.manifest) return;
+  const blob = new Blob([JSON.stringify(sender.manifest, null, 2)], {type:'application/json'});
+  triggerDownload(blob, (sender.manifest.originalName||'file') + '.manifest.json');
+};
+
+/* ===================== RECEIVER ===================== */
+const receiver = { items:[], base:null, total:null, manifest:null, ordered:null, ready:false };
+
+async function ingest(files){
+  for(const file of files){
+    if(/manifest\.json$/i.test(file.name) || /\.json$/i.test(file.name)){
+      try{ receiver.manifest = JSON.parse(await file.text()); }catch{ /* ignore bad json */ }
+      continue;
+    }
+    if(/\.eml$/i.test(file.name)){
+      const p = parseEml(await file.text());
+      if(p && p.index){
+        const bytes = base64ToBytes(p.base64);
+        const base = p.base || (parsePartName(file.name.replace(/\.eml$/i,''))||{}).base || 'reassembled.bin';
+        receiver.items.push({ base, index:p.index, total:p.total, blob:new Blob([bytes]), size:bytes.length });
+      }
+      continue;
+    }
+    const p = parsePartName(file.name);
+    if(p){ receiver.items.push({ base:p.base, index:p.index, total:p.total, blob:file, size:file.size }); }
+  }
+  evaluateReceiver();
+}
+
+function addLine(parent, dot, text, cls=''){
+  const d = document.createElement('div');
+  d.className = 'line' + (cls? ' '+cls : '');
+  d.innerHTML = `<span class="dot ${cls}">${dot}</span><span>${text}</span>`;
+  parent.appendChild(d);
+}
+
+function evaluateReceiver(){
+  const statusEl = $('#rr-status');
+  const items = receiver.items;
+  $('#readout-recv').classList.toggle('show', items.length>0 || !!receiver.manifest);
+  statusEl.innerHTML = '';
+  receiver.ready = false;
+  $('#btn-reassemble').disabled = true;
+
+  if(!items.length){
+    $('#rr-bar').style.width = '0%';
+    $('#rr-name').textContent = 'waiting for parts…';
+    if(receiver.manifest){
+      addLine(statusEl, '•', `manifest loaded for "${receiver.manifest.originalName}" (${receiver.manifest.partCount} parts).`);
+    }
+    return;
+  }
+
+  const groups = {};
+  for(const it of items){ const key = it.base + '|' + it.total; (groups[key] ||= []).push(it); }
+  const keys = Object.keys(groups);
+  const best = keys.sort((a,b)=>groups[b].length-groups[a].length)[0];
+  const group = groups[best];
+  const [base, totalStr] = best.split('|');
+  const total = +totalStr || group.length;
+  receiver.base = base; receiver.total = total;
+  $('#rr-name').textContent = base;
+
+  if(keys.length > 1){
+    addLine(statusEl, '!', `Parts from more than one file detected — using "${base}". Clear and add just one set if that's wrong.`, 'bad');
+  }
+
+  const byIndex = {};
+  for(const it of group){ byIndex[it.index] = it; }
+  const present = Object.keys(byIndex).map(Number).sort((a,b)=>a-b);
+  const missing = [];
+  for(let i=1;i<=total;i++){ if(!byIndex[i]) missing.push(i); }
+  const pct = Math.round((present.length/total)*100);
+  $('#rr-bar').style.width = pct + '%';
+  addLine(statusEl, present.length===total?'✓':'•',
+    `${present.length} of ${total} parts present` + (present.length===total?' — complete.':'.'),
+    present.length===total?'ok':'');
+
+  if(missing.length){
+    const show = missing.slice(0,12).map(padPart).join(', ');
+    addLine(statusEl, '✕', `Missing part${missing.length>1?'s':''}: ${show}${missing.length>12?'…':''}`, 'bad');
+    return;
+  }
+
+  receiver.ordered = present.map(i=>byIndex[i]);
+  receiver.ready = true;
+  $('#btn-reassemble').disabled = false;
+  addLine(statusEl, '•', receiver.manifest
+    ? 'Manifest present — parts will be checksum-verified on reassembly.'
+    : 'No manifest — parts will be joined in order (add manifest.json to verify each one).');
+}
+
+wireDrop('#drop-recv', '#file-recv', files => ingest(files));
+$('#rr-clear').onclick = () => {
+  receiver.items = []; receiver.manifest = null; receiver.ordered = null; receiver.ready = false;
+  $('#file-recv').value = '';
+  $('#rr-status').innerHTML = ''; $('#rr-bar').style.width='0%';
+  $('#readout-recv').classList.remove('show');
+  $('#recv-working').textContent = '';
+};
+
+$('#btn-reassemble').onclick = async () => {
+  if(!receiver.ready) return;
+  const btn = $('#btn-reassemble'); btn.disabled = true;
+  const statusEl = $('#rr-status');
+
+  if(receiver.manifest && Array.isArray(receiver.manifest.parts)){
+    const map = {}; receiver.manifest.parts.forEach(p=>map[p.index]=p);
+    let bad = 0;
+    for(const it of receiver.ordered){
+      $('#recv-working').textContent = `verifying part ${it.index}…`;
+      const spec = map[it.index];
+      if(!spec) continue;
+      const buf = await it.blob.arrayBuffer();
+      const h = await sha256Hex(buf);
+      if(h !== spec.sha256 || buf.byteLength !== spec.size){ bad++; }
+      await new Promise(r=>setTimeout(r,0));
+    }
+    if(bad){
+      addLine(statusEl, '✕', `${bad} part${bad>1?'s':''} failed checksum — the file may be corrupted. Re-download those parts.`, 'bad');
+      $('#recv-working').textContent = '';
+      btn.disabled = false;
+      return;
+    }
+    addLine(statusEl, '✓', 'All parts verified against the manifest.', 'ok');
+  }
+
+  $('#recv-working').textContent = 'joining parts…';
+  const out = new Blob(receiver.ordered.map(it=>it.blob), {type:'application/octet-stream'});
+  triggerDownload(out, receiver.base);
+  $('#rr-bar').style.width = '100%';
+  addLine(statusEl, '✓', `Reassembled "${receiver.base}" — ${humanSize(out.size)} downloaded.`, 'ok');
+  $('#recv-working').textContent = 'done.';
+  btn.disabled = false;
+};
+</script>
+</body>
+</html>
