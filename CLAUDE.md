@@ -59,3 +59,5 @@ After any change to the chunking logic: `npm run build && npm test`.
 ## Style
 
 Prefer editing existing files over adding new ones. Don't introduce dependencies or a build toolchain without a clear reason — the no-deps, no-bundler property is a feature. Match the existing terse, comment-light-but-not-absent style.
+
+**One deliberate exception:** `tools/pdf-tools/index.html` vendors `pdf-lib` (MIT) **inlined** into the page (PDF merge/split/rotate has no reasonable pure-JS alternative). It's isolated in a single marked `<script>` block — don't hand-edit that blob; re-vendor from the pinned version if it must change. The page is still self-contained and works offline; this is not a license to add a build step or pull libraries from a CDN.
