@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON Studio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── tool-specific ── */
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+
+  .opt { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; cursor: pointer; user-select: none; }
+  .opt input { width: auto; accent-color: var(--accent); cursor: pointer; }
+  .actions .spacer { flex: 1; }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 16px 0; color: var(--muted); font-size: 11px; letter-spacing: 0.1em;
+  }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* status banner */
+  .status { display: none; padding: 14px 20px; font-size: 13px; line-height: 1.5; border-bottom: 1px solid var(--border); }
+  .status.visible { display: block; }
+  .status.ok { background: rgba(71,255,142,0.06); color: var(--ok); }
+  .status.err { background: rgba(255,71,71,0.07); color: var(--danger); }
+  .status .status-line { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .status .status-detail { color: var(--text); margin-top: 6px; font-weight: 400; word-break: break-word; }
+  .status.err .status-detail { color: #ffb3b3; }
+  .status .badges { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .status .badge {
+    font-size: 11px; color: var(--text); background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 3px; padding: 4px 9px; font-weight: 400;
+  }
+  .status .badge b { color: var(--accent2); font-weight: 700; }
+
+  /* tree */
+  .tree-wrap { max-height: 460px; overflow: auto; padding: 6px 14px 14px; }
+  .tree, .tree ul { list-style: none; }
+  .tree ul { margin-left: 18px; border-left: 1px solid var(--border); padding-left: 4px; }
+  .tree li { line-height: 1.7; white-space: nowrap; }
+  .tnode { font-size: 12.5px; }
+  .ttog {
+    display: inline-block; width: 14px; text-align: center; color: var(--accent);
+    cursor: pointer; user-select: none; font-weight: 700;
+  }
+  .ttog.leaf { color: transparent; cursor: default; }
+  .tkey { color: var(--accent2); }
+  .tpunct { color: var(--muted); }
+  .tcount { color: var(--muted); font-size: 11px; }
+  .tcollapsed-preview { color: var(--muted); cursor: pointer; }
+  .v-string { color: #8ee87f; }
+  .v-number { color: #f5a35c; }
+  .v-boolean { color: #c792ea; }
+  .v-null { color: var(--muted); font-style: italic; }
+  .tchildren.hidden { display: none; }
+
+  /* query */
+  .query-row { display: flex; gap: 10px; }
+  .query-row input { flex: 1; }
+  .syntax-help { margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .syntax-help code {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 3px;
+    padding: 1px 6px; color: var(--accent); font-size: 11.5px;
+  }
+  .query-result { margin-top: 14px; }
+  .query-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .query-meta.err { color: var(--danger); }
+
+  /* output / code blocks */
+  pre.out {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 14px; font-size: 12.5px; line-height: 1.5; color: var(--text);
+    max-height: 460px; overflow: auto; white-space: pre; tab-size: 2;
+  }
+  .out-toolbar { display: flex; gap: 10px; padding: 14px 20px 0; flex-wrap: wrap; align-items: center; }
+  .out-toolbar .spacer { flex: 1; }
+  .hint { color: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>JSON<span>Studio</span></h1>
+  <p class="subtitle">format, validate, minify, explore, and query JSON — locally, with nothing uploaded.</p>
+</header>
+
+<div class="main">
+
+  <!-- Input -->
+  <div class="card">
+    <div class="card-header">
+      <span><span class="step">1</span>Input</span>
+      <span id="inputSize">empty</span>
+    </div>
+    <div class="card-body">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".json,.txt,application/json,text/plain">
+        <div class="drop-icon">&#8593;</div>
+        <div class="drop-text"><strong>Click or drag</strong> a .json or .txt file<br><span style="font-size:11px;opacity:.6">never leaves your browser</span></div>
+      </div>
+      <div class="divider">OR PASTE JSON</div>
+      <textarea id="input" spellcheck="false" placeholder='Paste JSON here, e.g. {"hello": "world"}'></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="btnFormat">Format</button>
+      <button class="tool-btn" id="btnMinify">Minify</button>
+      <button class="tool-btn" id="btnCopy">Copy</button>
+      <button class="tool-btn" id="btnDownload">Download .json</button>
+      <span class="spacer"></span>
+      <label class="opt"><input type="checkbox" id="optSort"> Sort keys</label>
+      <button class="btn-secondary" id="btnSample">Load sample</button>
+      <button class="btn-secondary" id="btnClear">Clear</button>
+    </div>
+
+    <!-- validation status -->
+    <div class="status" id="status">
+      <div class="status-line" id="statusLine"></div>
+      <div class="status-detail" id="statusDetail"></div>
+      <div class="badges" id="statusBadges"></div>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="card" id="outputCard" style="display:none">
+    <div class="card-header">
+      <span><span class="step">2</span>Output</span>
+      <span id="outputMode">formatted</span>
+    </div>
+    <div class="out-toolbar">
+      <button class="tool-btn" id="btnCopyOut">Copy output</button>
+      <button class="tool-btn" id="btnDownloadOut">Download</button>
+      <span class="spacer"></span>
+      <span class="hint" id="outputHint"></span>
+    </div>
+    <div class="card-body">
+      <pre class="out" id="output"></pre>
+    </div>
+  </div>
+
+  <!-- Tree -->
+  <div class="card" id="treeCard" style="display:none">
+    <div class="card-header">
+      <span><span class="step">3</span>Tree view</span>
+      <span>
+        <button class="tool-btn" id="btnExpandAll" style="padding:6px 10px">Expand all</button>
+        <button class="tool-btn" id="btnCollapseAll" style="padding:6px 10px">Collapse all</button>
+      </span>
+    </div>
+    <div class="tree-wrap"><ul class="tree" id="tree"></ul></div>
+  </div>
+
+  <!-- Query -->
+  <div class="card" id="queryCard" style="display:none">
+    <div class="card-header">
+      <span><span class="step">4</span>Query</span>
+      <span>JSONPath subset</span>
+    </div>
+    <div class="card-body">
+      <div class="query-row">
+        <input type="text" id="query" spellcheck="false" placeholder="$.users[*].email">
+        <button class="btn-primary" id="btnQuery">Run</button>
+      </div>
+      <div class="syntax-help">
+        Supported: <code>$</code> root &middot; <code>.key</code> or <code>["key"]</code> property &middot;
+        <code>[0]</code> index &middot; <code>[-1]</code> from end &middot; <code>[*]</code> all array items &middot;
+        <code>.*</code> all object values &middot; <code>..</code> recursive descent.
+        Chain freely, e.g. <code>$.data.items[0].id</code>, <code>$.users[*].email</code>, <code>$..name</code>.
+      </div>
+      <div class="query-result" id="queryResult" style="display:none">
+        <div class="query-meta" id="queryMeta"></div>
+        <pre class="out" id="queryOut"></pre>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  // Guards: above this we skip live tree rendering (still allow format/minify) to keep the tab responsive.
+  const MAX_LIVE = 2_000_000;          // 2MB: above this, debounced live-processing is off
+  const MAX_TREE_NODES = 20000;        // cap rendered tree nodes
+  const TREE_COLLAPSE_DEPTH = 2;       // auto-collapse object/array nodes deeper than this
+  const MAX_QUERY_RESULTS = 5000;
+
+  const $ = id => document.getElementById(id);
+  const inputEl = $('input'), statusEl = $('status'),
+        statusLine = $('statusLine'), statusDetail = $('statusDetail'), statusBadges = $('statusBadges');
+
+  let parsed;            // last successfully parsed value
+  let parsedOk = false;  // whether `parsed` reflects current input
+
+  /* ---------- byte size ---------- */
+  function byteLen(s){ return new Blob([s]).size; }
+  function fmtBytes(b){
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(2) + ' MB';
+  }
+
+  /* ---------- parse error → line:col ---------- */
+  // V8/SpiderMonkey embed a char offset ("position 42") in the SyntaxError message.
+  function locateError(text, msg){
+    const m = /position\s+(\d+)/i.exec(msg);
+    if (!m) {
+      // Firefox uses "line X column Y" directly.
+      const lc = /line\s+(\d+)\s+column\s+(\d+)/i.exec(msg);
+      if (lc) return { line: +lc[1], col: +lc[2] };
+      return null;
+    }
+    const pos = Math.min(+m[1], text.length);
+    let line = 1, col = 1;
+    for (let i = 0; i < pos; i++){
+      if (text[i] === '\n'){ line++; col = 1; } else { col++; }
+    }
+    return { line, col, pos };
+  }
+
+  /* ---------- stats over a parsed value ---------- */
+  function typeOf(v){
+    if (v === null) return 'null';
+    if (Array.isArray(v)) return 'array';
+    return typeof v; // object, string, number, boolean
+  }
+  function analyze(v){
+    let nodes = 0, maxDepth = 0;
+    (function walk(x, d){
+      nodes++;
+      if (d > maxDepth) maxDepth = d;
+      if (x && typeof x === 'object'){
+        if (Array.isArray(x)) for (const e of x) walk(e, d+1);
+        else for (const k in x) if (Object.prototype.hasOwnProperty.call(x,k)) walk(x[k], d+1);
+      }
+    })(v, 0);
+    return { nodes, maxDepth };
+  }
+
+  /* ---------- recursive key sort ---------- */
+  function sortKeys(v){
+    if (Array.isArray(v)) return v.map(sortKeys);
+    if (v && typeof v === 'object'){
+      const out = {};
+      for (const k of Object.keys(v).sort()) out[k] = sortKeys(v[k]);
+      return out;
+    }
+    return v;
+  }
+
+  /* ---------- validate + drive UI ---------- */
+  function setStatus(kind, line, detail, badges){
+    statusEl.className = 'status visible ' + kind;
+    statusLine.innerHTML = line;
+    statusDetail.innerHTML = detail || '';
+    statusDetail.style.display = detail ? 'block' : 'none';
+    statusBadges.innerHTML = (badges || []).map(b => '<span class="badge">'+b+'</span>').join('');
+  }
+
+  function validate(render){
+    const raw = inputEl.value;
+    $('inputSize').textContent = raw ? fmtBytes(byteLen(raw)) : 'empty';
+
+    if (!raw.trim()){
+      statusEl.className = 'status';
+      $('outputCard').style.display = 'none';
+      $('treeCard').style.display = 'none';
+      $('queryCard').style.display = 'none';
+      parsedOk = false;
+      return false;
+    }
+
+    let value;
+    try {
+      value = JSON.parse(raw);
+    } catch (e){
+      parsedOk = false;
+      const loc = locateError(raw, e.message);
+      let detail = escapeHtml(e.message);
+      if (loc){
+        detail += '<br>&rarr; <b>line ' + loc.line + ', column ' + loc.col + '</b>';
+        if (typeof loc.pos === 'number'){
+          const snip = snippet(raw, loc.pos);
+          if (snip) detail += '<br><span style="color:var(--muted)">' + snip + '</span>';
+        }
+      }
+      setStatus('err', '&#10007; Invalid JSON', detail, []);
+      $('outputCard').style.display = 'none';
+      $('treeCard').style.display = 'none';
+      $('queryCard').style.display = 'none';
+      return false;
+    }
+
+    parsed = value;
+    parsedOk = true;
+    const a = analyze(value);
+    setStatus('ok', '&#10003; Valid JSON', '', [
+      'top-level <b>' + typeOf(value) + '</b>',
+      '<b>' + a.nodes.toLocaleString() + '</b> nodes',
+      'max depth <b>' + a.maxDepth + '</b>',
+      'size <b>' + fmtBytes(byteLen(raw)) + '</b>'
+    ]);
+
+    if (render){
+      $('queryCard').style.display = 'block';
+      renderTree(value);
+    }
+    return true;
+  }
+
+  // small context snippet around an error position, with a caret
+  function snippet(text, pos){
+    const start = Math.max(0, pos - 24);
+    const end = Math.min(text.length, pos + 24);
+    let frag = text.slice(start, end).replace(/\n/g, '·');
+    const caretAt = pos - start;
+    return escapeHtml(frag) + '<br>' + '&nbsp;'.repeat(Math.max(0, caretAt)) + '^';
+  }
+
+  /* ---------- format / minify / output ---------- */
+  function maybeSorted(v){ return $('optSort').checked ? sortKeys(v) : v; }
+
+  function showOutput(text, mode, hint){
+    $('outputCard').style.display = 'block';
+    $('outputMode').textContent = mode;
+    $('output').textContent = text;
+    $('outputHint').textContent = hint || '';
+    currentOutput = text;
+  }
+  let currentOutput = '';
+
+  function doFormat(){
+    if (!validate(true)) { if (inputEl.value.trim()) showToast('Fix the JSON error first'); return; }
+    const text = JSON.stringify(maybeSorted(parsed), null, 2);
+    showOutput(text, $('optSort').checked ? 'formatted · sorted' : 'formatted', fmtBytes(byteLen(text)));
+  }
+  function doMinify(){
+    if (!validate(true)) { if (inputEl.value.trim()) showToast('Fix the JSON error first'); return; }
+    const text = JSON.stringify(maybeSorted(parsed));
+    showOutput(text, $('optSort').checked ? 'minified · sorted' : 'minified', fmtBytes(byteLen(text)));
+  }
+
+  /* ---------- tree ---------- */
+  let nodeBudget;
+  function renderTree(value){
+    const root = $('tree');
+    nodeBudget = MAX_TREE_NODES;
+    root.innerHTML = '';
+    const li = buildNode(undefined, value, 0, true);
+    root.appendChild(li);
+    $('treeCard').style.display = 'block';
+    if (nodeBudget <= 0){
+      const note = document.createElement('li');
+      note.style.color = 'var(--muted)';
+      note.style.fontSize = '11px';
+      note.textContent = '… tree truncated (over ' + MAX_TREE_NODES.toLocaleString() + ' nodes). Use Query or Format instead.';
+      root.appendChild(note);
+    }
+  }
+
+  function valueSpan(v){
+    const t = typeOf(v);
+    if (t === 'string') return '<span class="v-string">"' + escapeHtml(v) + '"</span>';
+    if (t === 'number') return '<span class="v-number">' + escapeHtml(String(v)) + '</span>';
+    if (t === 'boolean') return '<span class="v-boolean">' + v + '</span>';
+    if (t === 'null') return '<span class="v-null">null</span>';
+    return escapeHtml(String(v));
+  }
+
+  // Builds one <li>. For containers, children are built lazily on first expand.
+  function buildNode(key, value, depth, isRoot){
+    if (nodeBudget-- <= 0){
+      const li = document.createElement('li');
+      li.textContent = '…';
+      return li;
+    }
+    const t = typeOf(value);
+    const container = (t === 'object' || t === 'array');
+    const li = document.createElement('li');
+    const head = document.createElement('div');
+    head.className = 'tnode';
+
+    const tog = document.createElement('span');
+    tog.className = 'ttog' + (container ? '' : ' leaf');
+    head.appendChild(tog);
+
+    let html = '';
+    if (key !== undefined){
+      html += '<span class="tkey">' + escapeHtml(String(key)) + '</span><span class="tpunct">: </span>';
+    }
+
+    if (container){
+      const entries = t === 'array'
+        ? value.map((v,i)=>[i,v])
+        : Object.keys(value).map(k=>[k,value[k]]);
+      const count = entries.length;
+      const open = t === 'array' ? '[' : '{';
+      const close = t === 'array' ? ']' : '}';
+      const meta = t === 'array' ? (count + ' item' + (count===1?'':'s')) : (count + ' key' + (count===1?'':'s'));
+
+      tog.textContent = count ? '▸' : '';     // ▸
+      if (!count) tog.className = 'ttog leaf';
+
+      head.innerHTML += html;
+      const label = document.createElement('span');
+      label.innerHTML = '<span class="tpunct">' + open + '</span> <span class="tcount">' + meta + '</span> <span class="tpunct">' + close + '</span>';
+      head.appendChild(label);
+      li.appendChild(head);
+
+      if (count){
+        const ul = document.createElement('ul');
+        ul.className = 'tchildren';
+        let built = false;
+        const collapsed = !isRoot && depth >= TREE_COLLAPSE_DEPTH;
+
+        const buildChildren = () => {
+          if (built) return;
+          built = true;
+          for (const [k,v] of entries){
+            if (nodeBudget <= 0) break;
+            ul.appendChild(buildNode(k, v, depth+1, false));
+          }
+        };
+
+        const setOpen = (isOpen) => {
+          if (isOpen){
+            buildChildren();
+            ul.classList.remove('hidden');
+            tog.textContent = '▾'; // ▾
+          } else {
+            ul.classList.add('hidden');
+            tog.textContent = '▸'; // ▸
+          }
+        };
+
+        li.appendChild(ul);
+        setOpen(!collapsed);
+
+        const toggle = () => setOpen(ul.classList.contains('hidden'));
+        tog.style.cursor = 'pointer';
+        tog.addEventListener('click', toggle);
+        label.style.cursor = 'pointer';
+        label.addEventListener('click', toggle);
+      }
+    } else {
+      head.innerHTML += html + valueSpan(value);
+      li.appendChild(head);
+    }
+    return li;
+  }
+
+  // expand/collapse all currently-built nodes; expanding forces lazy children to build
+  function setAllTree(open){
+    if (!parsedOk) return;
+    const root = $('tree');
+    if (open){
+      // repeatedly expand until no collapsed containers remain (handles lazy build)
+      let guard = 0;
+      let changed = true;
+      while (changed && guard++ < 200){
+        changed = false;
+        root.querySelectorAll('.ttog').forEach(t => {
+          if (t.classList.contains('leaf')) return;
+          const ul = t.closest('li').querySelector(':scope > ul.tchildren');
+          if (ul && ul.classList.contains('hidden')){ t.click(); changed = true; }
+        });
+      }
+    } else {
+      root.querySelectorAll('ul.tchildren').forEach(ul => {
+        if (!ul.classList.contains('hidden')){
+          const tog = ul.closest('li').querySelector(':scope > .tnode > .ttog');
+          if (tog) tog.click();
+        }
+      });
+    }
+  }
+
+  /* ---------- query (JSONPath subset) ---------- */
+  // Tokenize a path into steps. Returns array of step objects or throws on syntax error.
+  // Steps: {t:'key',k}, {t:'index',i}, {t:'wild'} (all children), {t:'recurse'} (..)
+  function parsePath(path){
+    let s = path.trim();
+    if (!s) throw new Error('Empty path');
+    if (s === '$') return [];
+    if (s[0] !== '$') throw new Error("Path must start with '$'");
+    s = s.slice(1);
+
+    const steps = [];
+    let i = 0;
+    while (i < s.length){
+      const c = s[i];
+      if (c === '.'){
+        if (s[i+1] === '.'){            // recursive descent  ..
+          steps.push({ t:'recurse' });
+          i += 2;
+          if (i < s.length && s[i] === '.') throw new Error("Unexpected '.' after '..'");
+          // `..` may be followed directly by a bare key (`..email`), a `*`, or a `[…]`.
+          if (i < s.length && s[i] === '*'){ steps.push({ t:'wild' }); i++; continue; }
+          if (i < s.length && !'[]'.includes(s[i])){
+            let j = i;
+            while (j < s.length && !'.[]'.includes(s[j])) j++;
+            const name = s.slice(i, j);
+            if (name) { steps.push({ t:'key', k:name }); i = j; }
+          }
+          continue;
+        }
+        i++; // consume single dot
+        if (s[i] === '*'){ steps.push({ t:'wild' }); i++; continue; }
+        // dot-name
+        let j = i;
+        while (j < s.length && !'.[]'.includes(s[j])) j++;
+        const name = s.slice(i, j);
+        if (!name) throw new Error("Empty property name after '.'");
+        steps.push({ t:'key', k:name });
+        i = j;
+      } else if (c === '['){
+        const close = s.indexOf(']', i);
+        if (close === -1) throw new Error("Missing ']'");
+        let inner = s.slice(i+1, close).trim();
+        if (inner === '*'){
+          steps.push({ t:'wild' });
+        } else if ((inner[0] === '"' && inner[inner.length-1] === '"') ||
+                   (inner[0] === "'" && inner[inner.length-1] === "'")){
+          steps.push({ t:'key', k: inner.slice(1, -1) });
+        } else if (/^-?\d+$/.test(inner)){
+          steps.push({ t:'index', i: parseInt(inner, 10) });
+        } else {
+          throw new Error('Unsupported selector: [' + inner + ']');
+        }
+        i = close + 1;
+      } else {
+        throw new Error("Unexpected character '" + c + "' in path");
+      }
+    }
+    return steps;
+  }
+
+  function applyStep(values, step){
+    const out = [];
+    for (const v of values){
+      if (step.t === 'key'){
+        if (v && typeof v === 'object' && !Array.isArray(v) && Object.prototype.hasOwnProperty.call(v, step.k))
+          out.push(v[step.k]);
+      } else if (step.t === 'index'){
+        if (Array.isArray(v)){
+          const idx = step.i < 0 ? v.length + step.i : step.i;
+          if (idx >= 0 && idx < v.length) out.push(v[idx]);
+        }
+      } else if (step.t === 'wild'){
+        if (Array.isArray(v)) for (const e of v) out.push(e);
+        else if (v && typeof v === 'object') for (const k in v)
+          if (Object.prototype.hasOwnProperty.call(v,k)) out.push(v[k]);
+      } else if (step.t === 'recurse'){
+        // include self + every descendant
+        (function collect(x){
+          out.push(x);
+          if (Array.isArray(x)) for (const e of x) collect(e);
+          else if (x && typeof x === 'object') for (const k in x)
+            if (Object.prototype.hasOwnProperty.call(x,k)) collect(x[k]);
+        })(v);
+      }
+      if (out.length > MAX_QUERY_RESULTS * 4) break; // safety against pathological recursion blowup
+    }
+    return out;
+  }
+
+  function runQuery(){
+    const qEl = $('queryResult'), metaEl = $('queryMeta'), outEl = $('queryOut');
+    qEl.style.display = 'block';
+    if (!parsedOk){ metaEl.className = 'query-meta err'; metaEl.textContent = 'Validate some JSON first.'; outEl.textContent = ''; return; }
+    const path = $('query').value;
+    let steps;
+    try { steps = parsePath(path); }
+    catch (e){
+      metaEl.className = 'query-meta err';
+      metaEl.textContent = 'Invalid path: ' + e.message;
+      outEl.textContent = '';
+      return;
+    }
+    let results = [parsed];
+    for (const step of steps) results = applyStep(results, step);
+
+    if (!results.length){
+      metaEl.className = 'query-meta err';
+      metaEl.textContent = 'No match for ' + path;
+      outEl.textContent = '';
+      return;
+    }
+    metaEl.className = 'query-meta';
+    const truncated = results.length > MAX_QUERY_RESULTS;
+    if (truncated) results = results.slice(0, MAX_QUERY_RESULTS);
+    metaEl.textContent = results.length + ' match' + (results.length===1?'':'es') +
+      (truncated ? ' (showing first ' + MAX_QUERY_RESULTS + ')' : '');
+    // single result → show it directly; multiple → show as an array
+    const payload = results.length === 1 ? results[0] : results;
+    outEl.textContent = JSON.stringify(payload, null, 2);
+  }
+
+  /* ---------- file input ---------- */
+  const dropZone = $('dropZone'), fileInput = $('fileInput');
+  function readFile(file){
+    if (file.size > 25 * 1048576){ showToast('File too large (25MB max)'); return; }
+    const reader = new FileReader();
+    reader.onload = () => { inputEl.value = reader.result || ''; onInput(true); showToast('Loaded ' + file.name); };
+    reader.onerror = () => showToast('Could not read that file');
+    reader.readAsText(file);
+  }
+  fileInput.addEventListener('change', e => { const f = e.target.files[0]; if (f) readFile(f); });
+  ['dragenter','dragover'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
+  dropZone.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+
+  /* ---------- live processing (debounced) ---------- */
+  let debTimer;
+  function onInput(immediate){
+    clearTimeout(debTimer);
+    const run = () => {
+      const big = byteLen(inputEl.value) > MAX_LIVE;
+      // For very large input, validate without rendering the tree (cheaper) and skip live output.
+      validate(!big);
+      if (big){
+        $('inputSize').textContent = fmtBytes(byteLen(inputEl.value)) + ' (large — tree off)';
+        $('treeCard').style.display = 'none';
+      }
+    };
+    if (immediate) run(); else debTimer = setTimeout(run, 250);
+  }
+  inputEl.addEventListener('input', () => onInput(false));
+
+  /* ---------- buttons ---------- */
+  $('btnFormat').addEventListener('click', doFormat);
+  $('btnMinify').addEventListener('click', doMinify);
+  $('optSort').addEventListener('change', () => { if (parsedOk) { /* re-render tree sorted for consistency */ renderTree(maybeSorted(parsed)); } });
+
+  $('btnCopy').addEventListener('click', () => {
+    const v = inputEl.value;
+    if (!v) { showToast('Nothing to copy'); return; }
+    navigator.clipboard.writeText(v).then(()=>showToast('Input copied')).catch(()=>showToast('Copy failed'));
+  });
+  $('btnDownload').addEventListener('click', () => {
+    if (!validate(false)) { showToast('Fix the JSON error first'); return; }
+    download(JSON.stringify(maybeSorted(parsed), null, 2), 'data.json', 'application/json');
+    showToast('Downloaded data.json');
+  });
+  $('btnCopyOut').addEventListener('click', () => {
+    if (!currentOutput) { showToast('No output yet'); return; }
+    navigator.clipboard.writeText(currentOutput).then(()=>showToast('Output copied')).catch(()=>showToast('Copy failed'));
+  });
+  $('btnDownloadOut').addEventListener('click', () => {
+    if (!currentOutput) { showToast('No output yet'); return; }
+    download(currentOutput, 'data.json', 'application/json');
+    showToast('Downloaded data.json');
+  });
+  $('btnExpandAll').addEventListener('click', () => setAllTree(true));
+  $('btnCollapseAll').addEventListener('click', () => setAllTree(false));
+  $('btnQuery').addEventListener('click', runQuery);
+  $('query').addEventListener('keydown', e => { if (e.key === 'Enter') runQuery(); });
+
+  $('btnClear').addEventListener('click', () => {
+    inputEl.value = '';
+    fileInput.value = '';
+    currentOutput = '';
+    parsedOk = false;
+    statusEl.className = 'status';
+    $('outputCard').style.display = 'none';
+    $('treeCard').style.display = 'none';
+    $('queryCard').style.display = 'none';
+    $('queryResult').style.display = 'none';
+    $('inputSize').textContent = 'empty';
+  });
+
+  const SAMPLE = {
+    store: "Toolshed",
+    open: true,
+    visitors: 1428,
+    tags: ["local-first", "no-upload", "vanilla-js"],
+    users: [
+      { id: 1, name: "Ada Lovelace", email: "ada@example.com", roles: ["admin", "author"], active: true },
+      { id: 2, name: "Alan Turing", email: "alan@example.com", roles: ["author"], active: false },
+      { id: 3, name: "Grace Hopper", email: "grace@example.com", roles: [], active: true }
+    ],
+    data: {
+      items: [
+        { id: "a1", qty: 3, price: 9.99, meta: { sku: "X-1", inStock: true } },
+        { id: "b2", qty: 0, price: 19.5, meta: { sku: "X-2", inStock: false } }
+      ],
+      nested: { deep: { deeper: { value: null, note: "expand me" } } }
+    }
+  };
+  $('btnSample').addEventListener('click', () => {
+    inputEl.value = JSON.stringify(SAMPLE, null, 2);
+    onInput(true);
+    $('query').value = '$.users[*].email';
+    showToast('Sample loaded — try the query');
+  });
+</script>
+</body>
+</html>

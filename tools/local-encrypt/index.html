@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Local Encrypt</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], input[type=password], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── tool-specific ── */
+  .tabs { display: flex; gap: 8px; margin-bottom: 4px; }
+  .tab {
+    flex: 1;
+    background: var(--surface);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+  }
+  .tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .subtabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .subtab {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 9px 16px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .subtab.active { color: var(--accent2); border-color: var(--accent2); }
+
+  .pass-wrap { position: relative; }
+  .pass-wrap input { padding-right: 56px; }
+  .pass-toggle {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: transparent; color: var(--muted); border: none; padding: 6px 10px; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .pass-toggle:hover { color: var(--accent2); }
+
+  .row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .row > .col { flex: 1; min-width: 220px; }
+
+  .mismatch { color: var(--danger); font-size: 12px; margin-top: 8px; min-height: 16px; }
+  .field-gap { margin-bottom: 18px; }
+
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+
+  .output { margin-top: 18px; display: none; }
+  .output.show { display: block; }
+  .output-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .output-bar .field { margin-bottom: 0; }
+  .armored {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 14px; font-size: 12px; line-height: 1.5; color: var(--accent2);
+    word-break: break-all; white-space: pre-wrap; max-height: 280px; overflow: auto;
+  }
+  .plain {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 14px; font-size: 13px; line-height: 1.6; color: var(--text);
+    white-space: pre-wrap; word-break: break-word; max-height: 320px; overflow: auto;
+  }
+  .err { color: var(--danger); font-size: 13px; margin-top: 14px; min-height: 16px; }
+  .file-chip {
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 12px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+    padding: 8px 12px; font-size: 12px; color: var(--text);
+  }
+  .file-chip .x { color: var(--muted); cursor: pointer; }
+  .file-chip .x:hover { color: var(--danger); }
+
+  .note {
+    margin-top: 4px; font-size: 12px; line-height: 1.6; color: var(--muted);
+    border-left: 2px solid var(--border); padding-left: 14px;
+  }
+  .note strong { color: var(--accent); }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>Local<span>Encrypt</span></h1>
+  <p class="subtitle">Lock a note or file with a passphrase using real AES-256-GCM encryption — no accounts, no upload, the key never leaves your browser.</p>
+</header>
+
+<div class="main">
+
+  <div class="tabs">
+    <button class="tab active" id="tabEncrypt">Encrypt</button>
+    <button class="tab" id="tabDecrypt">Decrypt</button>
+  </div>
+
+  <!-- ENCRYPT -->
+  <div class="card" id="encryptCard">
+    <div class="card-header"><span><span class="step">1</span>Encrypt</span><span id="encMode">text</span></div>
+    <div class="card-body">
+      <div class="subtabs">
+        <button class="subtab active" data-encmode="text">Text message</button>
+        <button class="subtab" data-encmode="file">File</button>
+      </div>
+
+      <div id="encText">
+        <div class="field-gap">
+          <label class="field">Secret message</label>
+          <textarea id="encPlain" placeholder="Type or paste the text you want to encrypt…"></textarea>
+        </div>
+      </div>
+
+      <div id="encFile" class="hidden field-gap">
+        <label class="field">File to encrypt</label>
+        <div class="drop-zone" id="encDrop">
+          <input type="file" id="encFileInput">
+          <div class="drop-icon">&#128274;</div>
+          <div class="drop-text"><strong>Drop a file</strong> or click to choose. It is read in-memory only.</div>
+        </div>
+        <div id="encFileChip"></div>
+      </div>
+
+      <div class="row field-gap">
+        <div class="col">
+          <label class="field">Passphrase</label>
+          <div class="pass-wrap">
+            <input type="password" id="encPass" placeholder="Choose a strong passphrase" autocomplete="new-password">
+            <button class="pass-toggle" data-target="encPass">Show</button>
+          </div>
+        </div>
+        <div class="col">
+          <label class="field">Confirm passphrase</label>
+          <div class="pass-wrap">
+            <input type="password" id="encPass2" placeholder="Repeat passphrase" autocomplete="new-password">
+            <button class="pass-toggle" data-target="encPass2">Show</button>
+          </div>
+        </div>
+      </div>
+      <div class="mismatch" id="encMismatch"></div>
+
+      <div class="actions">
+        <button class="btn-primary" id="encBtn">Encrypt</button>
+      </div>
+
+      <div class="err" id="encErr"></div>
+
+      <!-- text output -->
+      <div class="output" id="encTextOut">
+        <div class="output-bar">
+          <label class="field">Armored output</label>
+          <button class="tool-btn" id="encCopy">Copy</button>
+        </div>
+        <div class="armored" id="encArmored"></div>
+      </div>
+
+      <!-- file output -->
+      <div class="output" id="encFileOut">
+        <div class="output-bar">
+          <label class="field">Encrypted file ready</label>
+          <button class="tool-btn" id="encDownload">Download .tsenc</button>
+        </div>
+        <div class="note" id="encFileOutNote"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DECRYPT -->
+  <div class="card hidden" id="decryptCard">
+    <div class="card-header"><span><span class="step">1</span>Decrypt</span></div>
+    <div class="card-body">
+      <div class="field-gap">
+        <label class="field">Armored block</label>
+        <textarea id="decArmored" placeholder="Paste a -----BEGIN TOOLSHED ENCRYPTED----- block here…"></textarea>
+      </div>
+
+      <div class="field-gap">
+        <label class="field">…or drop a .tsenc file</label>
+        <div class="drop-zone" id="decDrop">
+          <input type="file" id="decFileInput">
+          <div class="drop-icon">&#128273;</div>
+          <div class="drop-text"><strong>Drop a .tsenc file</strong> or click to choose.</div>
+        </div>
+        <div id="decFileChip"></div>
+      </div>
+
+      <div class="field-gap">
+        <label class="field">Passphrase</label>
+        <div class="pass-wrap">
+          <input type="password" id="decPass" placeholder="Enter the passphrase used to encrypt" autocomplete="off">
+          <button class="pass-toggle" data-target="decPass">Show</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="decBtn">Decrypt</button>
+      </div>
+
+      <div class="err" id="decErr"></div>
+
+      <!-- text output -->
+      <div class="output" id="decTextOut">
+        <div class="output-bar">
+          <label class="field">Recovered text</label>
+          <button class="tool-btn" id="decCopy">Copy</button>
+        </div>
+        <div class="plain" id="decPlain"></div>
+      </div>
+
+      <!-- file output -->
+      <div class="output" id="decFileOut">
+        <div class="output-bar">
+          <label class="field">Recovered file ready</label>
+          <button class="tool-btn" id="decDownload">Download</button>
+        </div>
+        <div class="note" id="decFileOutNote"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="note">
+        <strong>Honest note:</strong> this is genuine AES-256-GCM with a PBKDF2-derived key (SHA-256,
+        200,000 iterations). Its strength depends entirely on your passphrase — a weak passphrase can be
+        guessed offline. It is convenience-grade protection for casual privacy, not a substitute for
+        proper key management in adversarial or high-stakes situations. Keep your passphrase: it cannot
+        be recovered, and there is no backdoor.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  const subtle = window.crypto && window.crypto.subtle;
+  if (!subtle) {
+    document.querySelector('.main').innerHTML =
+      '<div class="card"><div class="card-body"><div class="err" style="display:block">'
+      + 'WebCrypto (crypto.subtle) is not available in this context. Open this page over '
+      + 'https://, http://localhost, or via file:// in a modern browser.</div></div></div>';
+    throw new Error('no subtle crypto');
+  }
+
+  // ── container format ──
+  // [ "TSENC1" (6 bytes ASCII) ][ version u8 = 1 ][ iterations u32 BE ]
+  // [ salt 16 bytes ][ iv 12 bytes ][ ciphertext+GCM-tag (rest) ]
+  const MAGIC = [0x54,0x53,0x45,0x4e,0x43,0x31]; // "TSENC1"
+  const VERSION = 1;
+  const ITERATIONS = 200000;
+  const HEADER_LEN = 6 + 1 + 4 + 16 + 12; // = 39
+  const ARMOR_BEGIN = '-----BEGIN TOOLSHED ENCRYPTED-----';
+  const ARMOR_END = '-----END TOOLSHED ENCRYPTED-----';
+
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  async function deriveKey(passphrase, salt, iterations) {
+    const baseKey = await subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+    return subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+      baseKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  // plainBytes: Uint8Array -> container Uint8Array
+  async function encryptBytes(passphrase, plainBytes) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(passphrase, salt, ITERATIONS);
+    const cipher = new Uint8Array(await subtle.encrypt({ name: 'AES-GCM', iv }, key, plainBytes));
+
+    const out = new Uint8Array(HEADER_LEN + cipher.length);
+    let o = 0;
+    out.set(MAGIC, o); o += 6;
+    out[o++] = VERSION;
+    out[o++] = (ITERATIONS >>> 24) & 0xff;
+    out[o++] = (ITERATIONS >>> 16) & 0xff;
+    out[o++] = (ITERATIONS >>> 8) & 0xff;
+    out[o++] = ITERATIONS & 0xff;
+    out.set(salt, o); o += 16;
+    out.set(iv, o); o += 12;
+    out.set(cipher, o);
+    return out;
+  }
+
+  // container Uint8Array -> plain Uint8Array (throws on bad pass / corruption / bad format)
+  async function decryptBytes(passphrase, container) {
+    if (container.length < HEADER_LEN) throw new Error('FORMAT');
+    for (let i = 0; i < 6; i++) if (container[i] !== MAGIC[i]) throw new Error('FORMAT');
+    let o = 6;
+    const version = container[o++];
+    if (version !== VERSION) throw new Error('FORMAT');
+    const iterations = (container[o] << 24) | (container[o+1] << 16) | (container[o+2] << 8) | container[o+3];
+    o += 4;
+    const it = iterations >>> 0; // treat as unsigned
+    if (it <= 0 || it > 10000000) throw new Error('FORMAT');
+    const salt = container.slice(o, o + 16); o += 16;
+    const iv = container.slice(o, o + 12); o += 12;
+    const cipher = container.slice(o);
+    const key = await deriveKey(passphrase, salt, it);
+    // AES-GCM throws if tag fails (wrong passphrase or tampered data)
+    const plain = await subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+    return new Uint8Array(plain);
+  }
+
+  // ── base64 (binary-safe) ──
+  function bytesToB64(bytes) {
+    let s = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(s);
+  }
+  function b64ToBytes(b64) {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  function wrap64(b64, width) {
+    width = width || 64;
+    const lines = [];
+    for (let i = 0; i < b64.length; i += width) lines.push(b64.slice(i, i + width));
+    return lines.join('\n');
+  }
+  function armor(bytes) {
+    return ARMOR_BEGIN + '\n' + wrap64(bytesToB64(bytes)) + '\n' + ARMOR_END;
+  }
+  // tolerate header/footer lines + arbitrary whitespace
+  function dearmor(text) {
+    let t = text;
+    const bi = t.indexOf(ARMOR_BEGIN);
+    if (bi !== -1) t = t.slice(bi + ARMOR_BEGIN.length);
+    const ei = t.indexOf(ARMOR_END);
+    if (ei !== -1) t = t.slice(0, ei);
+    t = t.replace(/-----(BEGIN|END)[^\n]*-----/g, ''); // strip any stray armor lines
+    t = t.replace(/\s+/g, '');
+    return t;
+  }
+
+  // ── state (in memory only) ──
+  let encFileObj = null;   // File selected for encryption
+  let decFileObj = null;   // File selected for decryption
+  let encOutBytes = null;  // container bytes ready to download
+  let encOutName = '';
+  let decOutBytes = null;  // recovered file bytes ready to download
+  let decOutName = '';
+  let decOutText = '';
+  let encMode = 'text';
+
+  // ── tab + subtab switching ──
+  const tabEncrypt = document.getElementById('tabEncrypt');
+  const tabDecrypt = document.getElementById('tabDecrypt');
+  const encryptCard = document.getElementById('encryptCard');
+  const decryptCard = document.getElementById('decryptCard');
+
+  tabEncrypt.onclick = () => {
+    tabEncrypt.classList.add('active'); tabDecrypt.classList.remove('active');
+    encryptCard.classList.remove('hidden'); decryptCard.classList.add('hidden');
+  };
+  tabDecrypt.onclick = () => {
+    tabDecrypt.classList.add('active'); tabEncrypt.classList.remove('active');
+    decryptCard.classList.remove('hidden'); encryptCard.classList.add('hidden');
+  };
+
+  document.querySelectorAll('.subtab').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('.subtab').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      encMode = b.dataset.encmode;
+      document.getElementById('encMode').textContent = encMode;
+      document.getElementById('encText').classList.toggle('hidden', encMode !== 'text');
+      document.getElementById('encFile').classList.toggle('hidden', encMode !== 'file');
+      hide(encTextOut); hide(encFileOut); document.getElementById('encErr').textContent = '';
+    };
+  });
+
+  // ── show/hide passphrase ──
+  document.querySelectorAll('.pass-toggle').forEach(btn => {
+    btn.onclick = () => {
+      const el = document.getElementById(btn.dataset.target);
+      const showing = el.type === 'text';
+      el.type = showing ? 'password' : 'text';
+      btn.textContent = showing ? 'Show' : 'Hide';
+    };
+  });
+
+  // ── confirm-passphrase warning ──
+  const encPass = document.getElementById('encPass');
+  const encPass2 = document.getElementById('encPass2');
+  const encMismatch = document.getElementById('encMismatch');
+  function checkMatch() {
+    if (encPass2.value && encPass.value !== encPass2.value) {
+      encMismatch.textContent = 'Passphrases do not match.';
+    } else {
+      encMismatch.textContent = '';
+    }
+  }
+  encPass.oninput = checkMatch;
+  encPass2.oninput = checkMatch;
+
+  // ── output helpers ──
+  function show(el){ el.classList.add('show'); }
+  function hide(el){ el.classList.remove('show'); }
+  const encTextOut = document.getElementById('encTextOut');
+  const encFileOut = document.getElementById('encFileOut');
+  const decTextOut = document.getElementById('decTextOut');
+  const decFileOut = document.getElementById('decFileOut');
+
+  // ── file selection (encrypt) ──
+  const encFileInput = document.getElementById('encFileInput');
+  const encDrop = document.getElementById('encDrop');
+  const encFileChip = document.getElementById('encFileChip');
+  function setEncFile(f) {
+    encFileObj = f;
+    encFileChip.innerHTML = f
+      ? '<span class="file-chip">' + escapeHtml(f.name) + ' &middot; ' + fmtSize(f.size)
+        + ' <span class="x" id="encFileX">&times;</span></span>'
+      : '';
+    if (f) document.getElementById('encFileX').onclick = (e) => { e.stopPropagation(); setEncFile(null); encFileInput.value=''; };
+    hide(encFileOut);
+  }
+  encFileInput.onchange = () => { if (encFileInput.files[0]) setEncFile(encFileInput.files[0]); };
+  wireDrop(encDrop, (f) => setEncFile(f));
+
+  // ── file selection (decrypt) ──
+  const decFileInput = document.getElementById('decFileInput');
+  const decDrop = document.getElementById('decDrop');
+  const decFileChip = document.getElementById('decFileChip');
+  const decArmored = document.getElementById('decArmored');
+  function setDecFile(f) {
+    decFileObj = f;
+    decFileChip.innerHTML = f
+      ? '<span class="file-chip">' + escapeHtml(f.name) + ' &middot; ' + fmtSize(f.size)
+        + ' <span class="x" id="decFileX">&times;</span></span>'
+      : '';
+    if (f) document.getElementById('decFileX').onclick = (e) => { e.stopPropagation(); setDecFile(null); decFileInput.value=''; };
+  }
+  decFileInput.onchange = () => { if (decFileInput.files[0]) setDecFile(decFileInput.files[0]); };
+  wireDrop(decDrop, (f) => setDecFile(f));
+
+  function wireDrop(zone, cb) {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) cb(e.dataTransfer.files[0]);
+    });
+  }
+
+  function fmtSize(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+    return (n/1048576).toFixed(1) + ' MB';
+  }
+  function readFileBytes(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(new Uint8Array(r.result));
+      r.onerror = () => reject(new Error('Could not read the file.'));
+      r.readAsArrayBuffer(file);
+    });
+  }
+
+  // ── ENCRYPT action ──
+  document.getElementById('encBtn').onclick = async () => {
+    const errEl = document.getElementById('encErr');
+    errEl.textContent = '';
+    hide(encTextOut); hide(encFileOut);
+
+    const pass = encPass.value;
+    if (!pass) { errEl.textContent = 'Enter a passphrase.'; return; }
+    if (encPass2.value !== pass) { errEl.textContent = 'Passphrases do not match.'; return; }
+
+    try {
+      if (encMode === 'text') {
+        const plain = document.getElementById('encPlain').value;
+        if (!plain) { errEl.textContent = 'Enter a message to encrypt.'; return; }
+        const container = await encryptBytes(pass, enc.encode(plain));
+        document.getElementById('encArmored').textContent = armor(container);
+        show(encTextOut);
+        showToast('Encrypted');
+      } else {
+        if (!encFileObj) { errEl.textContent = 'Choose a file to encrypt.'; return; }
+        const bytes = await readFileBytes(encFileObj);
+        const container = await encryptBytes(pass, bytes);
+        encOutBytes = container;
+        encOutName = encFileObj.name + '.tsenc';
+        document.getElementById('encFileOutNote').innerHTML =
+          'Encrypted <strong>' + escapeHtml(encFileObj.name) + '</strong> &rarr; '
+          + escapeHtml(encOutName) + ' (' + fmtSize(container.length) + ').';
+        show(encFileOut);
+        showToast('Encrypted');
+      }
+    } catch (e) {
+      errEl.textContent = 'Encryption failed: ' + (e && e.message ? e.message : 'unknown error') + '.';
+    }
+  };
+
+  document.getElementById('encCopy').onclick = async () => {
+    const text = document.getElementById('encArmored').textContent;
+    try { await navigator.clipboard.writeText(text); showToast('Copied'); }
+    catch { selectAndCopy(document.getElementById('encArmored')); }
+  };
+  document.getElementById('encDownload').onclick = () => {
+    if (!encOutBytes) return;
+    download(new Blob([encOutBytes], { type: 'application/octet-stream' }), encOutName, 'application/octet-stream');
+    showToast('Downloaded');
+  };
+
+  // ── DECRYPT action ──
+  document.getElementById('decBtn').onclick = async () => {
+    const errEl = document.getElementById('decErr');
+    errEl.textContent = '';
+    hide(decTextOut); hide(decFileOut);
+
+    const pass = document.getElementById('decPass').value;
+    if (!pass) { errEl.textContent = 'Enter the passphrase.'; return; }
+
+    // Source: dropped .tsenc file takes priority if present, else armored text.
+    let container = null;
+    let fromFile = false;
+    try {
+      if (decFileObj) {
+        container = await readFileBytes(decFileObj);
+        fromFile = true;
+      } else {
+        const armoredText = decArmored.value;
+        if (!armoredText.trim()) { errEl.textContent = 'Paste an armored block or drop a .tsenc file.'; return; }
+        const b64 = dearmor(armoredText);
+        if (!b64) { errEl.textContent = 'No encrypted data found in the input.'; return; }
+        container = b64ToBytes(b64);
+      }
+    } catch (e) {
+      errEl.textContent = 'That input is not valid encrypted data.';
+      return;
+    }
+
+    let plainBytes;
+    try {
+      plainBytes = await decryptBytes(pass, container);
+    } catch (e) {
+      if (e && e.message === 'FORMAT') {
+        errEl.textContent = 'This does not look like Toolshed encrypted data (bad or unsupported format).';
+      } else {
+        errEl.textContent = 'Wrong passphrase, or the data is corrupted.';
+      }
+      return;
+    }
+
+    if (fromFile) {
+      // recover original bytes; strip .tsenc extension if present
+      let name = decFileObj.name;
+      name = name.replace(/\.tsenc$/i, '');
+      if (!name) name = 'decrypted.bin';
+      decOutBytes = plainBytes;
+      decOutName = name;
+      document.getElementById('decFileOutNote').innerHTML =
+        'Recovered <strong>' + escapeHtml(decOutName) + '</strong> (' + fmtSize(plainBytes.length) + ').';
+      show(decFileOut);
+      showToast('Decrypted');
+    } else {
+      // armored text -> attempt to show as UTF-8 text
+      let text;
+      try { text = dec.decode(plainBytes); } catch { text = null; }
+      // detect non-text payload (lots of control chars / replacement chars)
+      const looksBinary = text === null || /\uFFFD/.test(text) ||
+        (text.length && (text.match(/[\x00-\x08\x0E-\x1F]/g) || []).length / text.length > 0.1);
+      if (looksBinary) {
+        decOutBytes = plainBytes;
+        decOutName = 'decrypted.bin';
+        document.getElementById('decFileOutNote').innerHTML =
+          'This payload is binary, not text. Recovered ' + fmtSize(plainBytes.length) + ' &rarr; decrypted.bin.';
+        show(decFileOut);
+        showToast('Decrypted');
+      } else {
+        decOutText = text;
+        document.getElementById('decPlain').textContent = text;
+        show(decTextOut);
+        showToast('Decrypted');
+      }
+    }
+  };
+
+  document.getElementById('decCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(decOutText); showToast('Copied'); }
+    catch { selectAndCopy(document.getElementById('decPlain')); }
+  };
+  document.getElementById('decDownload').onclick = () => {
+    if (!decOutBytes) return;
+    download(new Blob([decOutBytes], { type: 'application/octet-stream' }), decOutName, 'application/octet-stream');
+    showToast('Downloaded');
+  };
+
+  // clipboard fallback for file:// where navigator.clipboard may be unavailable
+  function selectAndCopy(el) {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(range);
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch {}
+    sel.removeAllRanges();
+    showToast(ok ? 'Copied' : 'Press Ctrl/Cmd-C to copy');
+  }
+</script>
+</body>
+</html>
