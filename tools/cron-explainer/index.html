@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cron Explainer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── tool-specific ── */
+  .cron-input { font-size: 18px !important; letter-spacing: 0.08em; font-weight: 700; text-align: center; }
+  .cron-input.bad { border-color: var(--danger); }
+
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .examples .lbl { width: 100%; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+
+  .summary {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    font-weight: 700;
+    line-height: 1.45;
+    color: var(--text);
+  }
+  .summary .hi { color: var(--accent2); }
+
+  .error-box {
+    color: var(--danger);
+    font-size: 13px;
+    line-height: 1.6;
+    background: rgba(255,71,71,0.06);
+    border: 1px solid rgba(255,71,71,0.3);
+    border-radius: 4px;
+    padding: 12px 14px;
+  }
+  .error-box strong { color: var(--danger); }
+
+  table.breakdown { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.breakdown th, table.breakdown td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.breakdown th { color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; font-weight: 700; }
+  table.breakdown tr:last-child td { border-bottom: none; }
+  table.breakdown .raw { color: var(--accent); white-space: nowrap; }
+  table.breakdown .fname { color: var(--text); white-space: nowrap; }
+  table.breakdown .vals { color: var(--muted); line-height: 1.6; word-break: break-word; }
+
+  ol.runs { list-style: none; counter-reset: run; }
+  ol.runs li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  ol.runs li:last-child { border-bottom: none; }
+  ol.runs .when { color: var(--text); }
+  ol.runs .rel { color: var(--accent2); font-size: 12px; white-space: nowrap; }
+
+  .note { color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .tz { color: var(--accent); }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>Cron<span>Explainer</span></h1>
+  <p class="subtitle">Paste a cron expression to read it in plain English and preview the next times it will run — computed in your browser, in your local timezone.</p>
+</header>
+
+<div class="main">
+
+  <div class="card">
+    <div class="card-header"><span><span class="step">1</span>Expression</span></div>
+    <div class="card-body">
+      <label class="field" for="cron">Cron expression (min hour day-of-month month day-of-week)</label>
+      <input type="text" id="cron" class="cron-input" spellcheck="false" autocomplete="off"
+             placeholder="*/15 9-17 * * 1-5" value="*/15 9-17 * * 1-5">
+      <div class="examples">
+        <span class="lbl">Examples</span>
+        <button class="tool-btn ex" data-ex="* * * * *">Every minute</button>
+        <button class="tool-btn ex" data-ex="0 0 * * *">Daily midnight</button>
+        <button class="tool-btn ex" data-ex="*/15 9-17 * * 1-5">Workday quarter-hours</button>
+        <button class="tool-btn ex" data-ex="0 9 1 * *">1st of month, 9am</button>
+        <button class="tool-btn ex" data-ex="0 12 * * MON-FRI">Weekday noon</button>
+        <button class="tool-btn ex" data-ex="0 0 1 1 *">New Year</button>
+        <button class="tool-btn ex" data-ex="*/30 * * * 0">Sundays, half-hourly</button>
+        <button class="tool-btn ex" data-ex="30 8 13 * 5">Friday the 13th OR 13th</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="errCard" style="display:none">
+    <div class="card-body"><div class="error-box" id="errBox"></div></div>
+  </div>
+
+  <div class="card" id="summaryCard">
+    <div class="card-header"><span><span class="step">2</span>In plain English</span></div>
+    <div class="card-body"><div class="summary" id="summary"></div></div>
+  </div>
+
+  <div class="card" id="breakdownCard">
+    <div class="card-header"><span><span class="step">3</span>Field breakdown</span></div>
+    <div class="card-body" style="padding:0">
+      <table class="breakdown">
+        <thead><tr><th>Field</th><th>Raw</th><th>Matches</th></tr></thead>
+        <tbody id="breakdownBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="runsCard">
+    <div class="card-header">
+      <span><span class="step">4</span>Next run times</span>
+      <span class="tz" id="tzLabel"></span>
+    </div>
+    <div class="card-body">
+      <ol class="runs" id="runs"></ol>
+      <div class="note" id="runsNote" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  // ── Constants ──────────────────────────────────────────────────────────
+  const MONTH_NAMES = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MONTH_ABBR  = {JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12};
+  const DOW_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const DOW_ABBR    = {SUN:0,MON:1,TUE:2,WED:3,THU:4,FRI:5,SAT:6};
+
+  // Field definitions, indexed for both 5- and 6-field forms.
+  // Each: name, min, max, names-map (or null), wrap (dow 7 -> 0).
+  const FIELD_DEFS = {
+    second: { name:'Second',       min:0, max:59, names:null,      label:'second'      },
+    minute: { name:'Minute',       min:0, max:59, names:null,      label:'minute'      },
+    hour:   { name:'Hour',         min:0, max:23, names:null,      label:'hour'        },
+    dom:    { name:'Day of month', min:1, max:31, names:null,      label:'day of month'},
+    month:  { name:'Month',        min:1, max:12, names:MONTH_ABBR,label:'month'       },
+    dow:    { name:'Day of week',  min:0, max:7,  names:DOW_ABBR,  label:'day of week' },
+  };
+
+  // ── Parsing ────────────────────────────────────────────────────────────
+  // Resolve a single token (possibly a name) to an integer for a field.
+  function resolveAtom(tok, def){
+    const up = tok.toUpperCase();
+    if (def.names && Object.prototype.hasOwnProperty.call(def.names, up)) return def.names[up];
+    if (!/^\d+$/.test(tok)) throw new Error('"' + tok + '" is not a valid value for ' + def.label);
+    return parseInt(tok, 10);
+  }
+
+  // Parse one field into a sorted, de-duped Set of matching ints (within def range).
+  // Returns { set:Set, isStar:boolean }.
+  function parseField(raw, def){
+    raw = raw.trim();
+    if (raw === '') throw new Error('Empty ' + def.label + ' field');
+    const set = new Set();
+    let isStar = true; // becomes false if any part is not '*'/'*/n' full-range
+
+    for (const partRaw of raw.split(',')) {
+      const part = partRaw.trim();
+      if (part === '') throw new Error('Empty list item in ' + def.label + ' field');
+
+      // Split off step
+      let rangePart = part, step = 1;
+      const slash = part.indexOf('/');
+      if (slash !== -1) {
+        rangePart = part.slice(0, slash).trim();
+        const stepStr = part.slice(slash + 1).trim();
+        if (!/^\d+$/.test(stepStr)) throw new Error('Invalid step "' + stepStr + '" in ' + def.label + ' field');
+        step = parseInt(stepStr, 10);
+        if (step < 1) throw new Error('Step must be >= 1 in ' + def.label + ' field');
+      }
+
+      let lo, hi, partIsFullRange = false;
+      if (rangePart === '*') {
+        lo = def.min; hi = def.max; partIsFullRange = true;
+      } else if (rangePart.indexOf('-') !== -1 &&
+                 // allow names that don't themselves contain '-' beyond a real range sep
+                 rangePart.split('-').length === 2) {
+        const [a, b] = rangePart.split('-');
+        if (a.trim() === '' || b.trim() === '') throw new Error('Malformed range "' + rangePart + '" in ' + def.label + ' field');
+        lo = resolveAtom(a.trim(), def);
+        hi = resolveAtom(b.trim(), def);
+      } else {
+        lo = hi = resolveAtom(rangePart, def);
+        // a bare value with a step (e.g. "5/2") means "from 5 to max, step"
+        if (slash !== -1) hi = def.max;
+      }
+
+      // dow: 7 == 0 (Sunday). Normalise endpoints into 0..6 effective space but
+      // keep validation against def range first.
+      function checkRange(v){
+        if (v < def.min || v > def.max) {
+          throw new Error(def.name + ' value ' + v + ' out of range (' + def.min + '-' + def.max + ')');
+        }
+      }
+      checkRange(lo); checkRange(hi);
+      if (lo > hi) throw new Error('Range start ' + lo + ' is greater than end ' + hi + ' in ' + def.label + ' field');
+
+      // Anything that isn't a pure full-range star makes the field "specific".
+      if (!(partIsFullRange && step === 1)) isStar = false;
+
+      for (let v = lo; v <= hi; v += step) {
+        let nv = v;
+        if (def.label === 'day of week' && nv === 7) nv = 0; // normalise
+        set.add(nv);
+      }
+    }
+
+    if (set.size === 0) throw new Error('No values matched in ' + def.label + ' field');
+    return { set, isStar };
+  }
+
+  // Parse a whole expression string into a structured object, or throw.
+  function parseCron(input){
+    const tokens = input.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length !== 5 && tokens.length !== 6) {
+      throw new Error('Expected 5 fields (or 6 with leading seconds), got ' + tokens.length + '. Format: minute hour day-of-month month day-of-week');
+    }
+    const hasSeconds = tokens.length === 6;
+    let i = 0;
+    const fields = {};
+    const order = []; // for breakdown display
+
+    if (hasSeconds) {
+      fields.second = { raw: tokens[i], def: FIELD_DEFS.second, ...parseField(tokens[i], FIELD_DEFS.second) };
+      order.push('second'); i++;
+    }
+    const seq = ['minute','hour','dom','month','dow'];
+    for (const key of seq) {
+      const def = FIELD_DEFS[key];
+      fields[key] = { raw: tokens[i], def, ...parseField(tokens[i], def) };
+      order.push(key); i++;
+    }
+    return { fields, order, hasSeconds, raw: tokens.join(' ') };
+  }
+
+  // ── Matcher ────────────────────────────────────────────────────────────
+  // Does a JS Date (local time) match the parsed cron?
+  // dom/dow OR-quirk handled here.
+  function matches(date, parsed){
+    const f = parsed.fields;
+    if (parsed.hasSeconds && !f.second.set.has(date.getSeconds())) return false;
+    if (!f.minute.set.has(date.getMinutes())) return false;
+    if (!f.hour.set.has(date.getHours())) return false;
+    if (!f.month.set.has(date.getMonth() + 1)) return false;
+
+    const domRestricted = !f.dom.isStar;
+    const dowRestricted = !f.dow.isStar;
+    const domMatch = f.dom.set.has(date.getDate());
+    const dowMatch = f.dow.set.has(date.getDay()); // getDay: 0=Sun..6=Sat (already normalised set)
+
+    if (domRestricted && dowRestricted) {
+      // OR semantics
+      if (!(domMatch || dowMatch)) return false;
+    } else if (domRestricted) {
+      if (!domMatch) return false;
+    } else if (dowRestricted) {
+      if (!dowMatch) return false;
+    } // else both '*': always pass these two
+    return true;
+  }
+
+  // Compute next N run times starting strictly after `from` (a Date).
+  // Steps by second (6-field) or minute (5-field). Bounded search.
+  function nextRuns(parsed, from, count){
+    const results = [];
+    const stepSeconds = parsed.hasSeconds;
+    // Start at the next tick boundary strictly after `from`.
+    const d = new Date(from.getTime());
+    if (stepSeconds) {
+      d.setMilliseconds(0);
+      d.setSeconds(d.getSeconds() + 1);
+    } else {
+      d.setSeconds(0, 0);
+      d.setMinutes(d.getMinutes() + 1);
+    }
+
+    // Bound: ~4 years of ticks. Use a time-based cap so DST etc. can't loop forever.
+    const capMs = from.getTime() + 4 * 366 * 24 * 3600 * 1000;
+    let truncated = false;
+
+    while (results.length < count) {
+      if (d.getTime() > capMs) { truncated = true; break; }
+      if (matches(d, parsed)) {
+        results.push(new Date(d.getTime()));
+        // advance one tick past this match to avoid duplicates
+        if (stepSeconds) d.setSeconds(d.getSeconds() + 1);
+        else d.setMinutes(d.getMinutes() + 1);
+        continue;
+      }
+      // Advance one tick. (Simple, robust; fast enough for these bounds because
+      // the most we ever scan to find a hit is well under a year of minutes.)
+      if (stepSeconds) d.setSeconds(d.getSeconds() + 1);
+      else d.setMinutes(d.getMinutes() + 1);
+    }
+    return { results, truncated };
+  }
+
+  // ── Description (plain English) ────────────────────────────────────────
+  function pad2(n){ return String(n).padStart(2, '0'); }
+
+  // Describe a numeric field's selection compactly using set + isStar.
+  // kind controls phrasing helpers.
+  function listFromSet(set){ return Array.from(set).sort((a,b)=>a-b); }
+
+  // Detect a uniform step pattern (e.g. every 15 within full range) for nicer prose.
+  function uniformStep(vals, min, max){
+    if (vals.length < 2) return null;
+    const step = vals[1] - vals[0];
+    if (step < 1) return null;
+    for (let i = 1; i < vals.length; i++) if (vals[i] - vals[i-1] !== step) return null;
+    // must start at min and the next value past last would exceed max (covers full range)
+    if (vals[0] !== min) return null;
+    if (vals[vals.length-1] + step <= max) return null;
+    return step;
+  }
+
+  function describeMinute(f){
+    if (f.isStar) return 'every minute';
+    const vals = listFromSet(f.set);
+    const step = uniformStep(vals, 0, 59);
+    if (step && step > 1) return 'every ' + step + ' minutes';
+    if (vals.length === 1) return 'at minute ' + vals[0];
+    return 'at minutes ' + vals.join(', ');
+  }
+
+  function describeSecond(f){
+    if (f.isStar) return 'every second';
+    const vals = listFromSet(f.set);
+    const step = uniformStep(vals, 0, 59);
+    if (step && step > 1) return 'every ' + step + ' seconds';
+    if (vals.length === 1) return 'at second ' + vals[0];
+    return 'at seconds ' + vals.join(', ');
+  }
+
+  function describeHour(f){
+    if (f.isStar) return null; // "past every hour" handled by caller
+    const vals = listFromSet(f.set);
+    const step = uniformStep(vals, 0, 23);
+    if (step && step > 1) return 'every ' + step + ' hours';
+    if (vals.length === 1) return 'at hour ' + pad2(vals[0]) + ':00';
+    // contiguous range -> "between HH:00 and HH:00"
+    if (isContiguous(vals)) return 'between ' + pad2(vals[0]) + ':00 and ' + pad2(vals[vals.length-1]) + ':00';
+    return 'during hours ' + vals.map(pad2).join(', ');
+  }
+
+  function isContiguous(vals){
+    for (let i=1;i<vals.length;i++) if (vals[i]-vals[i-1] !== 1) return false;
+    return vals.length > 1;
+  }
+
+  function describeDom(f){
+    if (f.isStar) return null;
+    const vals = listFromSet(f.set);
+    const step = uniformStep(vals, 1, 31);
+    if (step && step > 1) return 'every ' + step + ' days of the month';
+    if (vals.length === 1) return 'on day ' + vals[0] + ' of the month';
+    if (isContiguous(vals)) return 'on days ' + vals[0] + '–' + vals[vals.length-1] + ' of the month';
+    return 'on days ' + vals.join(', ') + ' of the month';
+  }
+
+  function describeMonth(f){
+    if (f.isStar) return null;
+    const vals = listFromSet(f.set);
+    if (vals.length === 1) return 'in ' + MONTH_NAMES[vals[0]];
+    if (isContiguous(vals)) return 'from ' + MONTH_NAMES[vals[0]] + ' through ' + MONTH_NAMES[vals[vals.length-1]];
+    return 'in ' + vals.map(v => MONTH_NAMES[v]).join(', ');
+  }
+
+  function describeDow(f){
+    if (f.isStar) return null;
+    const vals = listFromSet(f.set);
+    if (vals.length === 7) return null; // all days
+    if (vals.length === 1) return 'on ' + DOW_NAMES[vals[0]];
+    if (isContiguous(vals)) return DOW_NAMES[vals[0]] + ' through ' + DOW_NAMES[vals[vals.length-1]];
+    return 'on ' + vals.map(v => DOW_NAMES[v]).join(', ');
+  }
+
+  function buildDescription(parsed){
+    const f = parsed.fields;
+    const parts = [];
+
+    // Time-of-day clause: combine seconds/minute/hour.
+    const minStar = f.minute.isStar;
+    const hourStar = f.hour.isStar;
+    const secStar = !parsed.hasSeconds || f.second.isStar;
+
+    // Special common phrasings
+    const minVals = listFromSet(f.minute.set);
+    const hourVals = listFromSet(f.hour.set);
+    const secVals = parsed.hasSeconds ? listFromSet(f.second.set) : [0];
+
+    let timeClause;
+    // Single exact time(s): minute is single value, hour is single value (and seconds single or absent)
+    const minSingle = minVals.length === 1;
+    const hourSingle = hourVals.length === 1;
+    const secSingle = secVals.length === 1;
+
+    if (!minStar && !hourStar && minSingle && hourSingle && (secStar || secSingle)) {
+      // "At HH:MM(:SS)"
+      let t = 'At ' + pad2(hourVals[0]) + ':' + pad2(minVals[0]);
+      if (parsed.hasSeconds && !secStar) t += ':' + pad2(secVals[0]);
+      timeClause = t;
+    } else {
+      const segs = [];
+      if (parsed.hasSeconds) segs.push(describeSecond(f.second));
+      // Skip "every minute" when seconds already give the cadence (avoids redundancy).
+      if (!(parsed.hasSeconds && !secStar && minStar)) segs.push(describeMinute(f.minute));
+      const hourDesc = describeHour(f.hour);
+      if (hourStar) {
+        // minute clause already covers it; if minute is also star -> "every minute"
+      } else {
+        segs.push(hourDesc);
+      }
+      timeClause = segs.filter(Boolean).join(', ');
+      // Capitalize first letter
+      timeClause = timeClause.charAt(0).toUpperCase() + timeClause.slice(1);
+    }
+    parts.push(timeClause);
+
+    // Date clauses (dom / dow with OR-awareness) and month.
+    const domDesc = describeDom(f.dom);
+    const dowDesc = describeDow(f.dow);
+    const domRestricted = !f.dom.isStar;
+    const dowRestricted = !f.dow.isStar;
+
+    if (domRestricted && dowRestricted) {
+      // OR semantics — make that explicit.
+      parts.push(domDesc + ' or ' + dowDesc);
+    } else if (domRestricted) {
+      parts.push(domDesc);
+    } else if (dowRestricted && dowDesc) {
+      parts.push(dowDesc);
+    }
+
+    const monthDesc = describeMonth(f.month);
+    if (monthDesc) parts.push(monthDesc);
+
+    let sentence = parts.filter(Boolean).join(', ');
+    if (!/[.!?]$/.test(sentence)) sentence += '.';
+    return sentence;
+  }
+
+  // ── Formatting next-run dates ──────────────────────────────────────────
+  const WEEKDAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function fmtAbs(d, withSeconds){
+    const wd = WEEKDAY_SHORT[d.getDay()];
+    const mo = MONTH_SHORT[d.getMonth()];
+    let t = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    if (withSeconds) t += ':' + pad2(d.getSeconds());
+    return wd + ' ' + mo + ' ' + d.getDate() + ', ' + d.getFullYear() + ' · ' + t;
+  }
+
+  function fmtRel(target, now){
+    let diff = Math.round((target.getTime() - now.getTime()) / 1000); // seconds
+    if (diff < 0) diff = 0;
+    if (diff < 60) return 'in ' + diff + ' second' + (diff===1?'':'s');
+    const mins = Math.round(diff / 60);
+    if (mins < 60) return 'in ' + mins + ' minute' + (mins===1?'':'s');
+    const hours = Math.round(diff / 3600);
+    if (hours < 48) return 'in ' + hours + ' hour' + (hours===1?'':'s');
+    const days = Math.round(diff / 86400);
+    if (days < 60) return 'in ' + days + ' day' + (days===1?'':'s');
+    const months = Math.round(days / 30.44);
+    if (months < 24) return 'in ' + months + ' month' + (months===1?'':'s');
+    const years = (days / 365.25);
+    return 'in ' + (Math.round(years*10)/10) + ' years';
+  }
+
+  // ── Breakdown rendering ────────────────────────────────────────────────
+  function fieldValuesText(fieldObj){
+    if (fieldObj.isStar) return 'every value (' + fieldObj.def.min + '–' + fieldObj.def.max + ')';
+    const vals = listFromSet(fieldObj.set);
+    const def = fieldObj.def;
+    let labeled;
+    if (def.label === 'month') labeled = vals.map(v => MONTH_NAMES[v]);
+    else if (def.label === 'day of week') labeled = vals.map(v => DOW_NAMES[v]);
+    else labeled = vals.map(String);
+    // Cap very long lists for readability.
+    if (labeled.length > 30) {
+      return labeled.slice(0, 30).join(', ') + ', … (' + labeled.length + ' values)';
+    }
+    return labeled.join(', ');
+  }
+
+  // ── Wiring ─────────────────────────────────────────────────────────────
+  const inputEl = document.getElementById('cron');
+  const errCard = document.getElementById('errCard');
+  const errBox  = document.getElementById('errBox');
+  const summaryCard = document.getElementById('summaryCard');
+  const summaryEl = document.getElementById('summary');
+  const breakdownCard = document.getElementById('breakdownCard');
+  const breakdownBody = document.getElementById('breakdownBody');
+  const runsCard = document.getElementById('runsCard');
+  const runsEl = document.getElementById('runs');
+  const runsNote = document.getElementById('runsNote');
+  const tzLabel = document.getElementById('tzLabel');
+
+  // Show local timezone label once.
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    const offMin = -new Date().getTimezoneOffset();
+    const sign = offMin >= 0 ? '+' : '-';
+    const oh = pad2(Math.floor(Math.abs(offMin)/60));
+    const om = pad2(Math.abs(offMin)%60);
+    tzLabel.textContent = (tz ? tz + ' ' : '') + 'UTC' + sign + oh + ':' + om;
+  } catch(e){ tzLabel.textContent = 'local time'; }
+
+  function showError(msg){
+    inputEl.classList.add('bad');
+    errBox.innerHTML = '<strong>Invalid expression.</strong> ' + escapeHtml(msg);
+    errCard.style.display = '';
+    summaryCard.style.display = 'none';
+    breakdownCard.style.display = 'none';
+    runsCard.style.display = 'none';
+  }
+
+  function showResult(parsed){
+    inputEl.classList.remove('bad');
+    errCard.style.display = 'none';
+    summaryCard.style.display = '';
+    breakdownCard.style.display = '';
+    runsCard.style.display = '';
+
+    // Summary
+    let desc;
+    try { desc = buildDescription(parsed); }
+    catch(e){ desc = 'Runs on the schedule described below.'; }
+    summaryEl.textContent = desc;
+
+    // Breakdown table
+    const rows = [];
+    for (const key of parsed.order) {
+      const fo = parsed.fields[key];
+      rows.push(
+        '<tr>' +
+          '<td class="fname">' + escapeHtml(fo.def.name) + '</td>' +
+          '<td class="raw">' + escapeHtml(fo.raw) + '</td>' +
+          '<td class="vals">' + escapeHtml(fieldValuesText(fo)) + '</td>' +
+        '</tr>'
+      );
+    }
+    breakdownBody.innerHTML = rows.join('');
+
+    // Next runs
+    const now = new Date();
+    const { results, truncated } = nextRuns(parsed, now, 7);
+    if (results.length === 0) {
+      runsEl.innerHTML = '';
+      runsNote.innerHTML = '<span style="color:var(--danger)">No matching times found within the next ~4 years. This expression may never fire (e.g. an impossible day/month combination like Feb 30).</span>';
+      return;
+    }
+    const withSeconds = parsed.hasSeconds;
+    runsEl.innerHTML = results.map(d =>
+      '<li><span class="when">' + escapeHtml(fmtAbs(d, withSeconds)) + '</span>' +
+      '<span class="rel">' + escapeHtml(fmtRel(d, now)) + '</span></li>'
+    ).join('');
+    runsNote.textContent = truncated
+      ? 'Search stopped after ~4 years; more runs may follow.'
+      : 'Times shown in your local timezone.';
+  }
+
+  let runHandle = 0;
+  function update(){
+    const val = inputEl.value;
+    // Cancel any prior async; everything here is synchronous & fast, but guard anyway.
+    const myHandle = ++runHandle;
+    if (val.trim() === '') {
+      showError('Enter a cron expression above.');
+      errBox.innerHTML = 'Enter a cron expression above, or pick an example.';
+      errBox.style.color = 'var(--muted)';
+      inputEl.classList.remove('bad');
+      return;
+    }
+    errBox.style.color = '';
+    let parsed;
+    try {
+      parsed = parseCron(val);
+    } catch(e){
+      if (myHandle !== runHandle) return;
+      showError(e.message);
+      return;
+    }
+    if (myHandle !== runHandle) return;
+    try {
+      showResult(parsed);
+    } catch(e){
+      showError('Could not evaluate: ' + e.message);
+    }
+  }
+
+  inputEl.addEventListener('input', update);
+
+  document.querySelectorAll('.ex').forEach(btn => {
+    btn.addEventListener('click', () => {
+      inputEl.value = btn.dataset.ex;
+      update();
+      inputEl.focus();
+      showToast('Loaded: ' + btn.dataset.ex);
+    });
+  });
+
+  // Initial render
+  update();
+</script>
+</body>
+</html>

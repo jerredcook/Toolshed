@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Color Tools</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Color Tools specific ── */
+  .conv-row { display: flex; gap: 12px; align-items: stretch; }
+  .conv-row input[type=text] { flex: 1; }
+  .swatch-input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 56px;
+    height: 46px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .swatch-input::-webkit-color-swatch-wrapper { padding: 3px; }
+  .swatch-input::-webkit-color-swatch { border: none; border-radius: 2px; }
+  .swatch-input::-moz-color-swatch { border: none; border-radius: 2px; }
+
+  .err-msg { color: var(--danger); font-size: 12px; margin-top: 10px; min-height: 16px; }
+
+  .big-swatch {
+    width: 100%;
+    height: 96px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    margin-top: 16px;
+    /* checkerboard so alpha is visible */
+    background-image:
+      linear-gradient(45deg, #333 25%, transparent 25%),
+      linear-gradient(-45deg, #333 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #333 75%),
+      linear-gradient(-45deg, transparent 75%, #333 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .big-swatch .fill { position: absolute; inset: 0; }
+
+  .formats { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .fmt-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 14px;
+  }
+  .fmt-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; width: 54px; flex: 0 0 auto; }
+  .fmt-val { flex: 1; font-size: 13px; color: var(--text); word-break: break-all; }
+
+  .ramp { margin-top: 18px; }
+  .ramp-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .ramp-strip { display: flex; height: 40px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+  .ramp-strip .cell { flex: 1; cursor: pointer; transition: transform .1s; }
+  .ramp-strip .cell:hover { transform: scaleY(1.12); }
+
+  .contrast-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 560px) { .contrast-grid { grid-template-columns: 1fr; } .conv-row { flex-wrap: wrap; } }
+
+  .preview-box {
+    margin-top: 16px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px 22px;
+    text-align: center;
+  }
+  .preview-box .pv-lg { font-size: 22px; font-weight: 700; line-height: 1.3; }
+  .preview-box .pv-sm { font-size: 13px; margin-top: 10px; line-height: 1.5; }
+
+  .ratio-line { margin-top: 18px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .ratio-num { font-family: 'Syne', sans-serif; font-size: 34px; font-weight: 800; color: var(--accent2); line-height: 1; }
+  .ratio-cap { font-size: 12px; color: var(--muted); }
+
+  .badges { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .badge {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg);
+  }
+  .badge .b-name { font-size: 12px; color: var(--text); text-transform: uppercase; letter-spacing: 0.05em; }
+  .badge .b-sub { font-size: 10px; color: var(--muted); display: block; margin-top: 3px; text-transform: none; letter-spacing: 0; }
+  .b-tag { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 3px; }
+  .b-pass { background: rgba(71,255,142,0.15); color: var(--ok); }
+  .b-fail { background: rgba(255,71,71,0.15); color: var(--danger); }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>Color<span>Tools</span></h1>
+  <p class="subtitle">Convert colors between HEX, RGB, and HSL, and check text/background contrast against WCAG &mdash; all in the browser.</p>
+</header>
+
+<div class="main">
+
+  <!-- ── Converter ── -->
+  <div class="card">
+    <div class="card-header"><span><span class="step">1</span>Converter</span></div>
+    <div class="card-body">
+      <label class="field" for="convInput">Any CSS color &mdash; hex, rgb(), hsl(), or a name</label>
+      <div class="conv-row">
+        <input type="text" id="convInput" placeholder="#e8ff47, rgb(232 255 71), hsl(66 100% 64%), rebeccapurple" autocomplete="off" spellcheck="false" value="rebeccapurple">
+        <input type="color" id="convSwatch" class="swatch-input" value="#663399" aria-label="Pick a color">
+      </div>
+      <div class="err-msg" id="convErr"></div>
+
+      <div class="big-swatch"><div class="fill" id="bigSwatch"></div></div>
+
+      <div class="formats" id="convFormats">
+        <div class="fmt-row">
+          <span class="fmt-label">Hex</span>
+          <span class="fmt-val" id="fmtHex">&mdash;</span>
+          <button class="tool-btn" data-copy="fmtHex">Copy</button>
+        </div>
+        <div class="fmt-row">
+          <span class="fmt-label">RGB</span>
+          <span class="fmt-val" id="fmtRgb">&mdash;</span>
+          <button class="tool-btn" data-copy="fmtRgb">Copy</button>
+        </div>
+        <div class="fmt-row">
+          <span class="fmt-label">HSL</span>
+          <span class="fmt-val" id="fmtHsl">&mdash;</span>
+          <button class="tool-btn" data-copy="fmtHsl">Copy</button>
+        </div>
+      </div>
+
+      <div class="ramp">
+        <div class="ramp-label">Tints &amp; shades &middot; click to load</div>
+        <div class="ramp-strip" id="rampStrip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Contrast checker ── -->
+  <div class="card">
+    <div class="card-header"><span><span class="step">2</span>WCAG Contrast Checker</span></div>
+    <div class="card-body">
+      <div class="contrast-grid">
+        <div>
+          <label class="field" for="fgInput">Foreground (text)</label>
+          <div class="conv-row">
+            <input type="text" id="fgInput" autocomplete="off" spellcheck="false" value="#ffffff">
+            <input type="color" id="fgSwatch" class="swatch-input" value="#ffffff" aria-label="Pick foreground color">
+          </div>
+          <div class="err-msg" id="fgErr"></div>
+        </div>
+        <div>
+          <label class="field" for="bgInput">Background</label>
+          <div class="conv-row">
+            <input type="text" id="bgInput" autocomplete="off" spellcheck="false" value="rebeccapurple">
+            <input type="color" id="bgSwatch" class="swatch-input" value="#663399" aria-label="Pick background color">
+          </div>
+          <div class="err-msg" id="bgErr"></div>
+        </div>
+      </div>
+
+      <div class="preview-box" id="previewBox">
+        <div class="pv-lg">Large text sample (Aa)</div>
+        <div class="pv-sm">Normal body text &mdash; the quick brown fox jumps over the lazy dog.</div>
+      </div>
+
+      <div class="ratio-line">
+        <span class="ratio-num" id="ratioNum">&mdash;</span>
+        <span class="ratio-cap" id="ratioCap">contrast ratio (alpha ignored, range 1:1&ndash;21:1)</span>
+      </div>
+
+      <div class="badges" id="badges">
+        <div class="badge">
+          <span class="b-name">AA<span class="b-sub">Normal &middot; &ge; 4.5:1</span></span>
+          <span class="b-tag" id="badgeAA">&mdash;</span>
+        </div>
+        <div class="badge">
+          <span class="b-name">AA Large<span class="b-sub">&ge; 18.66px bold / 24px &middot; &ge; 3:1</span></span>
+          <span class="b-tag" id="badgeAAL">&mdash;</span>
+        </div>
+        <div class="badge">
+          <span class="b-name">AAA<span class="b-sub">Normal &middot; &ge; 7:1</span></span>
+          <span class="b-tag" id="badgeAAA">&mdash;</span>
+        </div>
+        <div class="badge">
+          <span class="b-name">AAA Large<span class="b-sub">Large text &middot; &ge; 4.5:1</span></span>
+          <span class="b-tag" id="badgeAAAL">&mdash;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. Nothing is uploaded or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  // Single shared 1x1 canvas: assign any CSS color to fillStyle, paint, read back exact RGBA.
+  const _cv = document.createElement('canvas');
+  _cv.width = _cv.height = 1;
+  const _ctx = _cv.getContext('2d', { willReadFrequently: true });
+
+  // Parse ANY CSS color -> {r,g,b,a} (0-255 ints, a 0-1) or null if invalid.
+  // Trick: set fillStyle to a sentinel first; if assigning the input doesn't change
+  // it (and the input isn't literally the sentinel), the browser rejected it.
+  function parseColor(raw){
+    const s = (raw == null ? '' : String(raw)).trim();
+    if (!s) return null;
+    // Two distinct sentinels: if the input equals one, the other still proves a change.
+    const sentinels = ['#010203', '#fefdfc'];
+    let accepted = false;
+    for (const sentinel of sentinels){
+      _ctx.fillStyle = sentinel;
+      _ctx.fillStyle = s;
+      // If browser kept the sentinel it usually means rejection, UNLESS the input
+      // genuinely resolves to that sentinel color — handle via the second sentinel.
+      if (_ctx.fillStyle.toLowerCase() !== sentinel) { accepted = true; break; }
+    }
+    if (!accepted) return null;
+
+    // Now paint & read back exact RGBA (handles alpha, named colors, hsl, etc.).
+    _ctx.clearRect(0, 0, 1, 1);
+    _ctx.fillStyle = s;
+    _ctx.fillRect(0, 0, 1, 1);
+    let d;
+    try { d = _ctx.getImageData(0, 0, 1, 1).data; } catch(e){ return null; }
+    return { r: d[0], g: d[1], b: d[2], a: +(d[3] / 255).toFixed(4) };
+  }
+
+  // ── format helpers ──
+  function toHex2(n){ return n.toString(16).padStart(2, '0'); }
+  function rgbaToHex(c){
+    const base = '#' + toHex2(c.r) + toHex2(c.g) + toHex2(c.b);
+    if (c.a >= 1) return base;
+    return base + toHex2(Math.round(c.a * 255));
+  }
+  function rgbaToCss(c){
+    if (c.a >= 1) return `rgb(${c.r}, ${c.g}, ${c.b})`;
+    return `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`;
+  }
+  function rgbToHsl(c){
+    const r = c.r / 255, g = c.g / 255, b = c.b / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, sat = 0; const l = (max + min) / 2;
+    const d = max - min;
+    if (d !== 0){
+      sat = d / (1 - Math.abs(2 * l - 1));
+      switch (max){
+        case r: h = ((g - b) / d) % 6; break;
+        case g: h = (b - r) / d + 2; break;
+        default: h = (r - g) / d + 4; break;
+      }
+      h *= 60;
+      if (h < 0) h += 360;
+    }
+    return { h: Math.round(h), s: Math.round(sat * 100), l: Math.round(l * 100) };
+  }
+  function rgbaToHslCss(c){
+    const h = rgbToHsl(c);
+    if (c.a >= 1) return `hsl(${h.h}, ${h.s}%, ${h.l}%)`;
+    return `hsla(${h.h}, ${h.s}%, ${h.l}%, ${c.a})`;
+  }
+
+  // ── WCAG luminance + contrast ──
+  function srgbToLin(ch){ // ch is 0-255
+    const c = ch / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+  function relLuminance(c){
+    return 0.2126 * srgbToLin(c.r) + 0.7152 * srgbToLin(c.g) + 0.0722 * srgbToLin(c.b);
+  }
+  function contrastRatio(fg, bg){
+    const l1 = relLuminance(fg), l2 = relLuminance(bg);
+    const light = Math.max(l1, l2), dark = Math.min(l1, l2);
+    return (light + 0.05) / (dark + 0.05);
+  }
+
+  // ── tints & shades ramp: mix toward white (tints) and black (shades) ──
+  function mix(c, target, t){ // t 0-1
+    return {
+      r: Math.round(c.r + (target - c.r) * t),
+      g: Math.round(c.g + (target - c.g) * t),
+      b: Math.round(c.b + (target - c.b) * t),
+      a: c.a
+    };
+  }
+  function buildRamp(c){
+    const out = [];
+    [0.6, 0.4, 0.2].forEach(t => out.push(mix(c, 255, t))); // tints
+    out.push({ r: c.r, g: c.g, b: c.b, a: c.a });           // base
+    [0.2, 0.4, 0.6].forEach(t => out.push(mix(c, 0, t)));   // shades
+    return out;
+  }
+
+  // ── copy ──
+  function copyText(txt){
+    const done = () => showToast('Copied');
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(done).catch(() => fallbackCopy(txt, done));
+    } else { fallbackCopy(txt, done); }
+  }
+  function fallbackCopy(txt, done){
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch(e){ showToast('Copy failed'); }
+    document.body.removeChild(ta);
+  }
+
+  // ═══════════════ Converter wiring ═══════════════
+  const convInput = document.getElementById('convInput');
+  const convSwatch = document.getElementById('convSwatch');
+  const convErr = document.getElementById('convErr');
+  const bigSwatch = document.getElementById('bigSwatch');
+  const fmtHex = document.getElementById('fmtHex');
+  const fmtRgb = document.getElementById('fmtRgb');
+  const fmtHsl = document.getElementById('fmtHsl');
+  const rampStrip = document.getElementById('rampStrip');
+
+  let currentColor = null; // last valid parsed color, for copy + ramp
+
+  function renderConverter(){
+    const c = parseColor(convInput.value);
+    if (!c){
+      convErr.textContent = convInput.value.trim() ? 'Not a valid CSS color.' : 'Enter a color to convert.';
+      fmtHex.textContent = fmtRgb.textContent = fmtHsl.textContent = '—';
+      bigSwatch.style.background = 'transparent';
+      rampStrip.innerHTML = '';
+      currentColor = null;
+      return;
+    }
+    convErr.textContent = '';
+    currentColor = c;
+    const hex = rgbaToHex(c);
+    fmtHex.textContent = hex;
+    fmtRgb.textContent = rgbaToCss(c);
+    fmtHsl.textContent = rgbaToHslCss(c);
+    bigSwatch.style.background = rgbaToCss(c);
+    // sync native swatch (opaque part only — color inputs can't hold alpha)
+    convSwatch.value = '#' + toHex2(c.r) + toHex2(c.g) + toHex2(c.b);
+
+    // ramp
+    const ramp = buildRamp(c);
+    rampStrip.innerHTML = '';
+    ramp.forEach(rc => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const css = rgbaToCss(rc);
+      cell.style.background = css;
+      const hexv = rgbaToHex(rc);
+      cell.title = hexv;
+      cell.addEventListener('click', () => {
+        convInput.value = hexv;
+        renderConverter();
+      });
+      rampStrip.appendChild(cell);
+    });
+  }
+
+  convInput.addEventListener('input', renderConverter);
+  convSwatch.addEventListener('input', () => {
+    convInput.value = convSwatch.value;
+    renderConverter();
+  });
+
+  // copy buttons (event delegation)
+  document.getElementById('convFormats').addEventListener('click', e => {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn) return;
+    const el = document.getElementById(btn.getAttribute('data-copy'));
+    const val = el.textContent;
+    if (!val || val === '—'){ showToast('Nothing to copy'); return; }
+    copyText(val);
+  });
+
+  // ═══════════════ Contrast wiring ═══════════════
+  const fgInput = document.getElementById('fgInput');
+  const bgInput = document.getElementById('bgInput');
+  const fgSwatch = document.getElementById('fgSwatch');
+  const bgSwatch = document.getElementById('bgSwatch');
+  const fgErr = document.getElementById('fgErr');
+  const bgErr = document.getElementById('bgErr');
+  const previewBox = document.getElementById('previewBox');
+  const ratioNum = document.getElementById('ratioNum');
+  const ratioCap = document.getElementById('ratioCap');
+
+  function setBadge(id, pass){
+    const el = document.getElementById(id);
+    el.textContent = pass ? 'PASS' : 'FAIL';
+    el.className = 'b-tag ' + (pass ? 'b-pass' : 'b-fail');
+  }
+  function clearBadges(){
+    ['badgeAA','badgeAAL','badgeAAA','badgeAAAL'].forEach(id => {
+      const el = document.getElementById(id);
+      el.textContent = '—';
+      el.className = 'b-tag';
+    });
+  }
+
+  function renderContrast(){
+    const fg = parseColor(fgInput.value);
+    const bg = parseColor(bgInput.value);
+    fgErr.textContent = fg ? '' : (fgInput.value.trim() ? 'Not a valid CSS color.' : 'Enter a foreground color.');
+    bgErr.textContent = bg ? '' : (bgInput.value.trim() ? 'Not a valid CSS color.' : 'Enter a background color.');
+
+    if (fg) fgSwatch.value = '#' + toHex2(fg.r) + toHex2(fg.g) + toHex2(fg.b);
+    if (bg) bgSwatch.value = '#' + toHex2(bg.r) + toHex2(bg.g) + toHex2(bg.b);
+
+    if (!fg || !bg){
+      previewBox.style.background = 'var(--bg)';
+      previewBox.style.color = 'var(--muted)';
+      ratioNum.textContent = '—';
+      ratioCap.textContent = 'Enter two valid colors.';
+      clearBadges();
+      return;
+    }
+
+    // live preview (use full rgba so alpha shows on text/bg)
+    previewBox.style.background = rgbaToCss(bg);
+    previewBox.style.color = rgbaToCss(fg);
+
+    // WCAG ratio is defined on opaque colors; we use the channel values as-is.
+    const ratio = contrastRatio(fg, bg);
+    ratioNum.textContent = ratio.toFixed(2) + ':1';
+    ratioCap.textContent = 'contrast ratio (range 1:1–21:1)';
+
+    setBadge('badgeAA',  ratio >= 4.5);
+    setBadge('badgeAAL', ratio >= 3.0);
+    setBadge('badgeAAA', ratio >= 7.0);
+    setBadge('badgeAAAL',ratio >= 4.5);
+  }
+
+  fgInput.addEventListener('input', renderContrast);
+  bgInput.addEventListener('input', renderContrast);
+  fgSwatch.addEventListener('input', () => { fgInput.value = fgSwatch.value; renderContrast(); });
+  bgSwatch.addEventListener('input', () => { bgInput.value = bgSwatch.value; renderContrast(); });
+
+  // ── init ──
+  renderConverter();
+  renderContrast();
+</script>
+</body>
+</html>

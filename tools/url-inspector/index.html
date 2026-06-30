@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URL Inspector</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1d1d1d;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #47ffe8;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4747;
+    --ok: #47ff8e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 70% 10%, rgba(232,255,71,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 10% 80%, rgba(71,255,232,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  header { width: 100%; max-width: 820px; margin-bottom: 36px; position: relative; z-index: 1; }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 60ch; }
+
+  .main {
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .card-header .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 3px;
+    font-weight: 700;
+    margin-right: 10px;
+  }
+  .card-body { padding: 20px; }
+
+  label.field { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+  input[type=text], input[type=number], input[type=search], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    padding: 13px 22px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { opacity: .9; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+  .tool-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 13px; font-size: 12px; }
+  .tool-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  .drop-zone {
+    position: relative;
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,255,71,0.04); }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .drop-text { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .drop-text strong { color: var(--text); }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: 11px; text-align: center; position: relative; z-index: 1; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 12px 22px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── tool-specific ── */
+  .url-input-wrap { display: flex; flex-direction: column; gap: 12px; }
+  #urlInput { min-height: 72px; font-size: 14px; }
+
+  .status {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .status.visible { display: flex; }
+  .status.error { background: rgba(255,71,71,0.07); border: 1px solid rgba(255,71,71,0.35); color: var(--text); }
+  .status.hint { background: rgba(71,255,232,0.05); border: 1px solid var(--border); color: var(--muted); }
+  .status .status-icon { flex-shrink: 0; }
+  .status.error .status-icon { color: var(--danger); }
+  .status.hint .status-icon { color: var(--accent2); }
+  .status button { padding: 7px 12px; font-size: 11px; margin-left: auto; flex-shrink: 0; }
+
+  .results { display: none; flex-direction: column; gap: 20px; }
+  .results.visible { display: flex; }
+
+  table.parts { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.parts tr { border-bottom: 1px solid var(--border); }
+  table.parts tr:last-child { border-bottom: none; }
+  table.parts td { padding: 11px 12px; vertical-align: top; }
+  table.parts td.k {
+    width: 1%;
+    white-space: nowrap;
+    color: var(--accent2);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    padding-top: 13px;
+  }
+  table.parts td.v { word-break: break-all; }
+  table.parts tr.empty td.v { color: var(--muted); font-style: italic; }
+  table.parts td .note { color: var(--muted); font-size: 11px; font-style: italic; margin-left: 8px; }
+  table.parts td.act { width: 1%; text-align: right; white-space: nowrap; }
+  .copy-one { background: transparent; border: none; color: var(--muted); font-size: 11px; font-weight: 700; padding: 4px 8px; cursor: pointer; }
+  .copy-one:hover { color: var(--accent); }
+
+  .qp-row td { padding: 11px 12px; vertical-align: top; }
+  .qp-key {
+    color: var(--accent);
+    word-break: break-all;
+    width: 35%;
+    font-weight: 700;
+  }
+  .qp-val { word-break: break-all; color: var(--text); }
+  .qp-val.empty { color: var(--muted); font-style: italic; }
+  .qp-meta { display: inline-block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+
+  .empty-note { padding: 18px 12px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  .util-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .util-out-wrap { margin-top: 16px; }
+  .util-out {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+    min-height: 64px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.5;
+  }
+  .util-out.err { color: var(--danger); }
+  .util-out.placeholder { color: var(--muted); }
+  .util-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<a href="../../index.html" style="position:absolute;top:20px;left:24px;color:var(--muted);text-decoration:none;font-size:12px;letter-spacing:1px;z-index:2">&larr; Toolshed</a>
+
+<header>
+  <div class="label">Local &middot; Private &middot; No upload</div>
+  <h1>URL<span>Inspector</span></h1>
+  <p class="subtitle">Paste a URL to break it into its parts, decode its query string, and percent-encode/decode text &mdash; all locally.</p>
+</header>
+
+<div class="main">
+
+  <!-- Input -->
+  <div class="card">
+    <div class="card-header">
+      <span><span class="step">1</span>URL</span>
+      <span>parses as you type</span>
+    </div>
+    <div class="card-body">
+      <div class="url-input-wrap">
+        <textarea id="urlInput" spellcheck="false" autocomplete="off" placeholder="https://user:pass@example.com:8443/path/to/page?q=hello+world&amp;tag=a&amp;tag=b#section"></textarea>
+        <div class="status" id="status">
+          <span class="status-icon" id="statusIcon"></span>
+          <span id="statusMsg"></span>
+          <button class="tool-btn" id="prependBtn" style="display:none" onclick="prependScheme()">Add https://</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+
+    <!-- Components -->
+    <div class="card">
+      <div class="card-header">
+        <span><span class="step">2</span>Components</span>
+        <button class="tool-btn" onclick="copyAllParts()">Copy all</button>
+      </div>
+      <div class="card-body" style="padding:8px 12px">
+        <table class="parts"><tbody id="partsBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- Query parameters -->
+    <div class="card">
+      <div class="card-header">
+        <span><span class="step">3</span>Query parameters</span>
+        <span id="qpCount"></span>
+      </div>
+      <div class="card-body" style="padding:8px 12px">
+        <table class="parts"><tbody id="qpBody"></tbody></table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Percent encode / decode utility -->
+  <div class="card">
+    <div class="card-header">
+      <span>Percent encode / decode</span>
+      <span>standalone</span>
+    </div>
+    <div class="card-body">
+      <label class="field" for="utilInput">Text</label>
+      <textarea id="utilInput" spellcheck="false" placeholder="Type or paste text to encode, or a %XX-encoded string to decode..."></textarea>
+      <div class="util-row">
+        <button class="btn-primary" onclick="utilEncode()">Encode</button>
+        <button class="btn-secondary" onclick="utilDecode()">Decode</button>
+        <button class="btn-secondary" onclick="utilClear()">Clear</button>
+      </div>
+      <div class="util-out-wrap">
+        <div class="util-head">
+          <label class="field" style="margin:0">Result</label>
+          <button class="tool-btn" onclick="copyUtil()">Copy</button>
+        </div>
+        <div class="util-out placeholder" id="utilOut">Result appears here.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Runs entirely in your browser. The URL is parsed locally and never fetched, uploaded, or stored.</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  let toastTimer;
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+  function download(content, filename, type){const a=document.createElement('a');const blob=content instanceof Blob?content:new Blob([content],{type});a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  // ── tool logic below ──
+
+  const urlInput = document.getElementById('urlInput');
+  const statusEl = document.getElementById('status');
+  const statusIcon = document.getElementById('statusIcon');
+  const statusMsg = document.getElementById('statusMsg');
+  const prependBtn = document.getElementById('prependBtn');
+  const results = document.getElementById('results');
+
+  // Default ports per scheme — used to flag implied defaults.
+  const DEFAULT_PORTS = { 'http:': '80', 'https:': '443', 'ftp:': '21', 'ws:': '80', 'wss:': '443' };
+
+  // A scheme like "https://" or "mailto:" at the very start.
+  const HAS_SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.\-]*:/;
+
+  function copyText(text){
+    navigator.clipboard.writeText(text).then(
+      () => showToast('Copied'),
+      () => showToast('Copy failed')
+    );
+  }
+  // Exposed for inline onclick handlers built from escaped, encoded payloads.
+  window.copyDecoded = function(b64){
+    try { copyText(decodeURIComponent(escape(atob(b64)))); }
+    catch (e) { showToast('Copy failed'); }
+  };
+  // base64-encode a UTF-8 string safely for stashing in an attribute.
+  function b64(s){ return btoa(unescape(encodeURIComponent(s))); }
+
+  function setStatus(kind, msg, showPrepend){
+    statusEl.className = 'status visible ' + kind;
+    statusIcon.textContent = kind === 'error' ? '⚠' : 'ℹ';
+    statusMsg.textContent = msg;
+    prependBtn.style.display = showPrepend ? '' : 'none';
+  }
+  function clearStatus(){
+    statusEl.className = 'status';
+    prependBtn.style.display = 'none';
+  }
+
+  function prependScheme(){
+    const v = urlInput.value.trim();
+    if (!v) return;
+    urlInput.value = 'https://' + v.replace(/^\/+/, '');
+    parse();
+    urlInput.focus();
+  }
+
+  urlInput.addEventListener('input', parse);
+
+  function parse(){
+    const raw = urlInput.value.trim();
+    if (!raw){
+      clearStatus();
+      results.classList.remove('visible');
+      return;
+    }
+
+    let u;
+    try {
+      u = new URL(raw);
+    } catch (e) {
+      results.classList.remove('visible');
+      if (!HAS_SCHEME_RE.test(raw)){
+        setStatus('error', 'Not a valid absolute URL — include a scheme like https://', true);
+      } else {
+        setStatus('error', 'Not a valid URL: ' + e.message, false);
+      }
+      return;
+    }
+
+    clearStatus();
+    renderParts(u);
+    renderQuery(u);
+    results.classList.add('visible');
+  }
+
+  function renderParts(u){
+    const port = u.port;
+    const defPort = DEFAULT_PORTS[u.protocol];
+    let portVal, portEmpty, portNote = '';
+    if (port){
+      portVal = port;
+      portEmpty = false;
+    } else if (defPort){
+      portVal = defPort;
+      portEmpty = false;
+      portNote = 'default for ' + u.protocol.replace(':', '');
+    } else {
+      portVal = '';
+      portEmpty = true;
+    }
+
+    const rows = [
+      { k: 'Scheme',   v: u.protocol.replace(/:$/, ''), copy: u.protocol.replace(/:$/, '') },
+      { k: 'Username', v: safeDecode(u.username),       copy: u.username },
+      { k: 'Password', v: u.password ? safeDecode(u.password) : '', copy: u.password },
+      { k: 'Hostname', v: u.hostname,                   copy: u.hostname },
+      { k: 'Port',     v: portVal, note: portNote, copy: portVal, forceEmpty: portEmpty },
+      { k: 'Origin',   v: u.origin === 'null' ? '' : u.origin, copy: u.origin === 'null' ? '' : u.origin },
+      { k: 'Pathname', v: u.pathname,                   copy: u.pathname, decoded: safeDecode(u.pathname) },
+      { k: 'Search',   v: u.search,                     copy: u.search },
+      { k: 'Fragment', v: u.hash,                        copy: u.hash, decoded: u.hash ? safeDecode(u.hash) : '' }
+    ];
+
+    let html = '';
+    for (const r of rows){
+      const empty = r.forceEmpty || r.v === '' || r.v == null;
+      const cls = empty ? 'empty' : '';
+      let valCell;
+      if (empty){
+        valCell = '<span>(empty)</span>';
+      } else {
+        valCell = escapeHtml(r.v);
+        if (r.note) valCell += '<span class="note">' + escapeHtml(r.note) + '</span>';
+        // For pathname/fragment, show a decoded line if it differs from the raw.
+        if (r.decoded && r.decoded !== r.v){
+          valCell += '<div class="qp-meta">decoded: ' + escapeHtml(r.decoded) + '</div>';
+        }
+      }
+      const act = (!empty && r.copy)
+        ? '<button class="copy-one" onclick="copyDecoded(\'' + b64(r.copy) + '\')">copy</button>'
+        : '';
+      html += '<tr class="' + cls + '"><td class="k">' + escapeHtml(r.k) + '</td>' +
+              '<td class="v">' + valCell + '</td>' +
+              '<td class="act">' + act + '</td></tr>';
+    }
+    document.getElementById('partsBody').innerHTML = html;
+  }
+
+  function renderQuery(u){
+    const body = document.getElementById('qpBody');
+    const countEl = document.getElementById('qpCount');
+    // Collect entries preserving order and repeats. searchParams already
+    // percent-decodes keys and values for us.
+    const entries = [];
+    u.searchParams.forEach((value, key) => entries.push([key, value]));
+
+    if (!entries.length){
+      countEl.textContent = '';
+      body.innerHTML = '<tr><td class="empty-note" colspan="3">No query parameters.</td></tr>';
+      return;
+    }
+
+    countEl.textContent = entries.length + (entries.length === 1 ? ' param' : ' params');
+
+    // Track which keys repeat so we can hint at the occurrence.
+    const keyCounts = {};
+    for (const [k] of entries) keyCounts[k] = (keyCounts[k] || 0) + 1;
+    const seen = {};
+
+    let html = '';
+    for (const [key, value] of entries){
+      seen[key] = (seen[key] || 0) + 1;
+      const repeatNote = keyCounts[key] > 1
+        ? '<span class="qp-meta">occurrence ' + seen[key] + ' of ' + keyCounts[key] + '</span>'
+        : '';
+      const valEmpty = value === '';
+      const valHtml = valEmpty
+        ? '<span class="qp-val empty">(empty)</span>'
+        : '<span class="qp-val">' + escapeHtml(value) + '</span>';
+      html += '<tr class="qp-row">' +
+              '<td class="qp-key">' + escapeHtml(key) + '</td>' +
+              '<td>' + valHtml + repeatNote + '</td>' +
+              '<td class="act">' + (valEmpty ? '' :
+                '<button class="copy-one" onclick="copyDecoded(\'' + b64(value) + '\')">copy</button>') +
+              '</td></tr>';
+    }
+    body.innerHTML = html;
+  }
+
+  // Decode %XX where possible; fall back to the raw string if malformed.
+  function safeDecode(s){
+    if (s == null) return '';
+    try { return decodeURIComponent(s); }
+    catch (e) { return s; }
+  }
+
+  function copyAllParts(){
+    const raw = urlInput.value.trim();
+    let u;
+    try { u = new URL(raw); } catch (e){ showToast('Nothing to copy'); return; }
+    const port = u.port || (DEFAULT_PORTS[u.protocol] ? DEFAULT_PORTS[u.protocol] + ' (default)' : '');
+    const lines = [
+      'Scheme:   ' + u.protocol.replace(/:$/, ''),
+      'Username: ' + safeDecode(u.username),
+      'Password: ' + safeDecode(u.password),
+      'Hostname: ' + u.hostname,
+      'Port:     ' + port,
+      'Origin:   ' + (u.origin === 'null' ? '' : u.origin),
+      'Pathname: ' + u.pathname,
+      'Search:   ' + u.search,
+      'Fragment: ' + u.hash
+    ].filter(l => l.split(': ')[1] !== '' && l.split(': ')[1] !== undefined);
+    copyText(lines.join('\n'));
+  }
+
+  /* ── percent encode / decode utility ── */
+  const utilInput = document.getElementById('utilInput');
+  const utilOut = document.getElementById('utilOut');
+
+  function setUtilOut(text, kind){
+    utilOut.className = 'util-out' + (kind ? ' ' + kind : '');
+    utilOut.textContent = text;
+  }
+
+  function utilEncode(){
+    const v = utilInput.value;
+    if (!v){ setUtilOut('Nothing to encode.', 'placeholder'); return; }
+    try { setUtilOut(encodeURIComponent(v), ''); }
+    catch (e){ setUtilOut('Could not encode that text.', 'err'); }
+  }
+
+  function utilDecode(){
+    const v = utilInput.value;
+    if (!v){ setUtilOut('Nothing to decode.', 'placeholder'); return; }
+    try {
+      // Normalize '+' to space the way query strings do is intentionally NOT done
+      // here — decodeURIComponent is literal. Just guard malformed % sequences.
+      setUtilOut(decodeURIComponent(v), '');
+    } catch (e){
+      setUtilOut('Could not decode — malformed percent-encoding (e.g. a stray "%" or an invalid %XX sequence).', 'err');
+    }
+  }
+
+  function utilClear(){
+    utilInput.value = '';
+    setUtilOut('Result appears here.', 'placeholder');
+  }
+
+  function copyUtil(){
+    const t = utilOut.textContent;
+    if (!t || utilOut.classList.contains('placeholder') || utilOut.classList.contains('err')){
+      showToast('Nothing to copy'); return;
+    }
+    copyText(t);
+  }
+</script>
+</body>
+</html>
